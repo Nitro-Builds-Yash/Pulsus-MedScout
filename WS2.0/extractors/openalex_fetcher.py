@@ -123,6 +123,8 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
             for aff in a.get("raw_affiliation_strings", []):
                 for em in re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', aff):
                     clean = em.strip().rstrip(".").lower()
+                    if "gmail.com" in clean:
+                        continue
                     if clean not in found_emails:
                         found_emails.append(clean)
 

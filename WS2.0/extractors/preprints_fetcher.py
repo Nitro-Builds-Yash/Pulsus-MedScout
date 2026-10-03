@@ -183,7 +183,7 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
                         aff_text = aff_obj.get("affiliation", "")
                         for em in EMAIL_RE.findall(aff_text):
                             c = em.strip().rstrip(".").lower()
-                            if c not in emails:
+                            if "gmail.com" not in c and c not in emails:
                                 emails.append(c)
 
                 records.append({
@@ -262,7 +262,7 @@ def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
                     for aff in a.get("raw_affiliation_strings", []):
                         for em in EMAIL_RE.findall(aff):
                             c = em.strip().rstrip(".").lower()
-                            if c not in emails:
+                            if "gmail.com" not in c and c not in emails:
                                 emails.append(c)
 
                 file_path = None
@@ -357,7 +357,7 @@ def fetch_ssrn_papers(topic, limit=10, target_dir=None, filters=None):
                     for aff in a.get("raw_affiliation_strings", []):
                         for em in EMAIL_RE.findall(aff):
                             c = em.strip().rstrip(".").lower()
-                            if c not in emails:
+                            if "gmail.com" not in c and c not in emails:
                                 emails.append(c)
 
                 records.append({
@@ -444,7 +444,7 @@ def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None):
                     for aff in a.get("raw_affiliation_strings", []):
                         for em in EMAIL_RE.findall(aff):
                             c = em.strip().rstrip(".").lower()
-                            if c not in emails:
+                            if "gmail.com" not in c and c not in emails:
                                 emails.append(c)
 
                 records.append({
@@ -520,7 +520,7 @@ def fetch_all_preprints_papers(topic, limit=10, target_dir=None, filters=None):
                         for aff in a.get("raw_affiliation_strings", []):
                             for em in EMAIL_RE.findall(aff):
                                 c = em.strip().rstrip(".").lower()
-                                if c not in emails:
+                                if "gmail.com" not in c and c not in emails:
                                     emails.append(c)
 
                     results.append({

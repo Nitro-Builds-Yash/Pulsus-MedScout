@@ -52,7 +52,7 @@ def _extract_emails_from_html(abstract_url):
                 continue               # Rejects: dompurify@2.3.5, icon@1.0, etc.
             if len(e) > 80:
                 continue
-            if any(x in e.lower() for x in ["arxiv", "latex", ".png", ".jpg", ".css", "example"]):
+            if any(x in e.lower() for x in ["arxiv", "latex", ".png", ".jpg", ".css", "example", "gmail.com"]):
                 continue
             clean.append(e.lower())
 

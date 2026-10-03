@@ -288,6 +288,13 @@ def save_new_emails_to_master(new_rows):
     """Append newly found verified email rows to the master CSV file."""
     if not new_rows:
         return
+    # Ensure no gmail.com address can ever be written
+    new_rows = [
+        r for r in new_rows
+        if r.get("Email ID") and "gmail.com" not in str(r.get("Email ID")).lower()
+    ]
+    if not new_rows:
+        return
     # Strictly output Paper Title, Author Name, Email ID (no DOI, no PDF name, no source)
     cols = ["Paper Title", "Author Name", "Email ID"]
     new_df = pd.DataFrame(new_rows)
@@ -908,7 +915,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     "Email ID": clean_and_validate_email(e)
                 })
         # Exact target capping: Return up to max_papers
-        rows = final_strict_rows[:max_papers]
+        rows = [r for r in final_strict_rows[:max_papers] if "gmail.com" not in r["Email ID"].lower()]
         log.info(f"[Task {short_id}] Extraction complete. New verified rows: {len(rows)}")
 
         if not rows:

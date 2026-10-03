@@ -139,7 +139,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
                                 jats_resp = requests.get(jats_url, headers=STEALTH_HEADERS, timeout=10)
                                 if jats_resp.status_code == 200:
                                     raw_em = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', jats_resp.text)
-                                    found_emails = list({e.lower().rstrip(".") for e in raw_em if not any(x in e.lower() for x in [".png", ".jpg", "example.com"])})
+                                    found_emails = list({e.lower().rstrip(".") for e in raw_em if not any(x in e.lower() for x in [".png", ".jpg", "example.com", "gmail.com"])})
 
                             if found_emails:
                                 saved_count += 1

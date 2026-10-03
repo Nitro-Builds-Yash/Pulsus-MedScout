@@ -60,7 +60,7 @@ def fetch_semanticscholar_papers(topic, limit=10, target_dir=None, filters=None)
 
             # Check for emails inside abstract text
             found_emails = EMAIL_RE.findall(abstract)
-            clean_emails = list({e.lower() for e in found_emails if not any(x in e.lower() for x in [".png", ".jpg", "example.com"])})
+            clean_emails = list({e.lower() for e in found_emails if not any(x in e.lower() for x in [".png", ".jpg", "example.com", "gmail.com"])})
 
             ext_ids = p.get("externalIds") or {}
             doi = ext_ids.get("DOI")
