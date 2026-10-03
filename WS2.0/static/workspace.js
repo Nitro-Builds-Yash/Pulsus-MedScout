@@ -80,11 +80,23 @@ const checkedValues = name => Array.from(form.querySelectorAll(`input[name="${na
 function updateSelection() {
   const countries = checkedValues('countries');
   $('countrySummary').textContent = countries.length ? countries.join(' · ') : 'Worldwide · no country restriction';
-  $('sourceCount').textContent = `${checkedValues('source_sites').length} selected`;
+  const selectedSources = checkedValues('source_sites');
+  $('sourceCount').textContent = `${selectedSources.length} selected`;
+  if ($('selectAllCheckbox')) {
+    $('selectAllCheckbox').checked = (selectedSources.length === sources.length);
+    $('selectAllCheckbox').indeterminate = (selectedSources.length > 0 && selectedSources.length < sources.length);
+  }
   const types = checkedValues('article_types').length;
   $('typeCount').textContent = types ? `${types} selected` : 'All types';
 }
 form.addEventListener('change', updateSelection);
+if ($('selectAllCheckbox')) {
+  $('selectAllCheckbox').addEventListener('change', e => {
+    const checked = e.target.checked;
+    for (const el of form.querySelectorAll('[name="source_sites[]"]')) el.checked = checked;
+    updateSelection();
+  });
+}
 $('countrySearch').addEventListener('input', e => {
   const query = e.target.value.toLocaleLowerCase();
   for (const label of document.querySelectorAll('.country-option')) label.hidden = !label.textContent.toLocaleLowerCase().includes(query);
@@ -93,6 +105,24 @@ $('clearCountries').addEventListener('click', () => {
   for (const el of form.querySelectorAll('[name="countries[]"]')) el.checked = false;
   updateSelection();
 });
+if ($('selectAllCountries')) {
+  $('selectAllCountries').addEventListener('click', () => {
+    for (const el of form.querySelectorAll('[name="countries[]"]')) el.checked = true;
+    updateSelection();
+  });
+}
+if ($('selectAllTypes')) {
+  $('selectAllTypes').addEventListener('click', () => {
+    for (const el of form.querySelectorAll('[name="article_types[]"]')) el.checked = true;
+    updateSelection();
+  });
+}
+if ($('clearTypes')) {
+  $('clearTypes').addEventListener('click', () => {
+    for (const el of form.querySelectorAll('[name="article_types[]"]')) el.checked = false;
+    updateSelection();
+  });
+}
 for (const [id, checked] of [['selectSources', true], ['clearSources', false]]) {
   $(id).addEventListener('click', () => {
     for (const el of form.querySelectorAll('[name="source_sites[]"]')) el.checked = checked;
