@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  email-scraper:
+    build: .
+    container_name: academic-email-scraper
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./WS2.0/downloads:/app/WS2.0/downloads
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=5000
+      - APP_DEBUG=False
+      - POLITE_EMAIL=your-email@domain.com
+    restart: unless-stopped

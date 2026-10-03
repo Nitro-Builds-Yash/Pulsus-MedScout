@@ -1,0 +1,191 @@
+import os
+import time
+import logging
+import requests
+
+log = logging.getLogger("extraction.biorxiv")
+
+# Polite headers for APIs
+API_HEADERS = {
+    "User-Agent": "AcademicEmailExtractor/1.0 (Research Outreach Tool)"
+}
+
+# Stealth headers for PDF downloads
+STEALTH_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "application/pdf,application/xhtml+xml,text/html,application/xml;q=0.9,*/*;q=0.8"
+}
+
+# Both bioRxiv and medRxiv share the same API structure
+SERVERS = ["biorxiv", "medrxiv"]
+
+
+def _download_pdf_with_retry(url, file_path, retries=1, timeout=10, delay=1):
+    """Fail-fast download: Try once (or twice max), quickly timeout if stuck."""
+    for attempt in range(retries + 1):
+        try:
+            resp = requests.get(url, headers=STEALTH_HEADERS, timeout=timeout, allow_redirects=True)
+            if resp.status_code == 200 and (
+                resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]
+            ):
+                with open(file_path, "wb") as f:
+                    f.write(resp.content)
+                return True
+        except Exception as e:
+            log.warning(f"  [bioRxiv] Download failed (timeout/block): {e}")
+
+        time.sleep(delay)
+
+    return False
+
+
+def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
+    """
+    Searches and downloads PDFs from bioRxiv AND medRxiv.
+    Uses Crossref (with prefix:10.1101) to find relevant preprints by topic,
+    then constructs direct PDF links and tries both servers.
+
+    filters (dict, optional):
+        year_from (int|None): applied as from-pub-date in Crossref filter
+        year_to   (int|None): applied as until-pub-date in Crossref filter
+        countries / article_types: not supported by bioRxiv — silently ignored
+    """
+    filters     = filters or {}
+    year_from   = filters.get("year_from")
+    year_to     = filters.get("year_to")
+
+    # Build Crossref date filter
+    # Default: 2020 onwards (bioRxiv is a preprint server — older content is rare)
+    from_date = f"{year_from}-01-01" if year_from else "2020-01-01"
+    until_date= f"{year_to}-12-31"   if year_to   else "2099-12-31"
+    crossref_filter = f"type:posted-content,from-pub-date:{from_date},until-pub-date:{until_date},prefix:10.1101"
+
+    records = []
+    saved_count = 0
+    offset = 0
+    max_offset = max(2000, limit * 2)
+
+    log.info(f"[bioRxiv/medRxiv] Searching for: '{topic}' (targeting {limit} papers)...")
+    log.info(f"[bioRxiv/medRxiv] Crossref filter: {crossref_filter!r}")
+
+    while saved_count < limit and offset < max_offset:
+        crossref_url = "https://api.crossref.org/works"
+        params = {
+            "query":   topic,
+            "filter":  crossref_filter,
+            "select":  "DOI,title,author,published",
+            "rows":    min(100, (limit - saved_count) * 2),
+            "offset":  offset,
+            "mailto":  "23r25a6702@mlrit.ac.in"
+        }
+
+        try:
+            time.sleep(1)
+            resp = requests.get(crossref_url, params=params, headers=API_HEADERS, timeout=15)
+            if resp.status_code != 200:
+                log.warning(f"[bioRxiv/medRxiv] Search failed. HTTP {resp.status_code}")
+                break
+            items = resp.json().get("message", {}).get("items", [])
+        except Exception as e:
+            log.error(f"[bioRxiv/medRxiv] API error: {e}")
+            break
+
+        if not items:
+            log.info(f"[bioRxiv/medRxiv] No more candidates found at offset {offset}.")
+            break
+
+        log.info(f"  [bioRxiv/medRxiv] Found {len(items)} candidates at offset {offset}. Downloading PDFs...")
+
+        for item in items:
+            if saved_count >= limit:
+                break
+
+            doi = item.get("DOI", "N/A")
+            titles = item.get("title", ["Untitled"])
+            title = titles[0] if titles else "Untitled"
+
+            # Extract author names
+            authors_meta = []
+            for auth in item.get("author", []):
+                given = auth.get("given", "")
+                family = auth.get("family", "")
+                full_name = f"{given} {family}".strip()
+                if full_name:
+                    authors_meta.append(full_name)
+
+            if not doi or doi == "N/A":
+                continue
+
+            pdf_name = f"biorxiv_paper_{saved_count + 1}.pdf"
+            file_path = os.path.join(target_dir, pdf_name)
+            
+            log.info(f"    ({saved_count + 1}/{limit}) {title[:50]}...")
+            
+            # Fast, high-accuracy Step 1: Query official bioRxiv/medRxiv details API
+            # This returns corresponding author and JATS XML directly containing verified emails
+            api_success = False
+            for server in SERVERS:
+                try:
+                    api_url = f"https://api.biorxiv.org/details/{server}/{doi}"
+                    api_resp = requests.get(api_url, headers=API_HEADERS, timeout=10)
+                    if api_resp.status_code == 200:
+                        coll = api_resp.json().get("collection", [])
+                        if coll:
+                            c_item = coll[0]
+                            corr_author = c_item.get("author_corresponding")
+                            jats_url = c_item.get("jatsxml")
+                            found_emails = []
+                            if jats_url:
+                                jats_resp = requests.get(jats_url, headers=STEALTH_HEADERS, timeout=10)
+                                if jats_resp.status_code == 200:
+                                    raw_em = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', jats_resp.text)
+                                    found_emails = list({e.lower().rstrip(".") for e in raw_em if not any(x in e.lower() for x in [".png", ".jpg", "example.com"])})
+
+                            if found_emails:
+                                saved_count += 1
+                                combined_authors = ([corr_author] if corr_author else []) + [a for a in authors_meta if a != corr_author]
+                                records.append({
+                                    "title": title,
+                                    "authors": combined_authors,
+                                    "emails": found_emails,
+                                    "doi": doi,
+                                    "source_journal": server.capitalize()
+                                })
+                                api_success = True
+                                log.info(f"      -> Extracted email via {server.capitalize()} JATS XML: {found_emails}")
+                                break
+                except Exception as ex:
+                    log.debug(f"[bioRxiv API] Error for {doi}: {ex}")
+
+            if api_success:
+                time.sleep(0.5)
+                continue
+
+            # Fallback Step 2: Try direct PDF download if XML had no emails
+            pdf_success = False
+            for server in SERVERS:
+                pdf_url = f"https://www.{server}.org/content/{doi}.full.pdf"
+                if _download_pdf_with_retry(pdf_url, file_path, retries=0):
+                    pdf_success = True
+                    break
+                time.sleep(0.5)
+
+            if pdf_success:
+                saved_count += 1
+                records.append({
+                    "file_path": file_path,
+                    "pdf_name": pdf_name,
+                    "title": title,
+                    "authors": authors_meta,
+                    "doi": doi,
+                    "source_journal": server.capitalize()
+                })
+            else:
+                log.warning(f"      -> Skipped (not found or download blocked).")
+
+            time.sleep(1)
+            
+        offset += params["rows"]
+
+    log.info(f"[bioRxiv/medRxiv] Done. Successfully retrieved {saved_count} papers.")
+    return records

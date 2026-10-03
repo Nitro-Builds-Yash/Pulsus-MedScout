@@ -1,0 +1,33 @@
+# Core Web Framework
+Flask>=3.0.0
+gunicorn>=21.2.0
+
+# Document & PDF Parsing
+pdfplumber>=0.11.0
+pypdf>=4.0.0
+beautifulsoup4>=4.12.0
+lxml>=5.1.0
+
+# Data Processing & Export
+pandas>=2.2.0
+openpyxl>=3.1.2
+
+# Networking & Web APIs
+requests>=2.31.0
+urllib3>=2.2.0
+
+# DNS & Email Verification
+dnspython>=2.6.0
+
+# Environment & Config
+python-dotenv>=1.0.0
+
+# CLI & UX Enhancements
+rich>=13.7.0
+click>=8.1.0
+tqdm>=4.66.0
+
+# Development & Testing
+pytest>=8.0.0
+pytest-mock>=3.12.0
+flake8>=7.0.0

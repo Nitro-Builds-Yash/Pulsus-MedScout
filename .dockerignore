@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.git/
+.gitignore
+.env
+.venv/
+venv/
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+WS2.0/downloads/Pdf Files/
+WS2.0/downloads/author details/
+WS2.0/extraction.log
+WS2.0/extraction.lock
