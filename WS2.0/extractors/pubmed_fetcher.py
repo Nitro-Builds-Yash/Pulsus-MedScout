@@ -5,6 +5,7 @@ import requests
 import xml.etree.ElementTree as ET
 from urllib.parse import quote_plus
 from .http_client import http_session
+from .country_filter import COUNTRY_CODES
 
 log = logging.getLogger("extraction.pubmed")
 
@@ -21,7 +22,11 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
     year_to = filters.get("year_to")
 
     # Build Entrez Search Query
-    query = topic
+    query = "(" + topic + ")"
+    countries = filters.get("countries", [])
+    if countries:
+        names = {"USA": "United States", "UK": "United Kingdom"}
+        query += " AND (" + " OR ".join(f'"{names.get(c, c)}"[Affiliation]' for c in countries if c in COUNTRY_CODES) + ")"
     if year_from and year_to:
         query += f" AND {year_from}:{year_to}[dp]"
     elif year_from:
@@ -84,6 +89,8 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
                     authors = []
                     emails = []
                     affiliations = []
+                    author_affiliations = {}
+                    email_candidates = {}
 
                     for author_node in article.findall(".//AuthorList/Author"):
                         last_name = author_node.find("LastName")
@@ -100,9 +107,11 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
                         for aff in author_node.findall(".//AffiliationInfo/Affiliation"):
                             aff_text = aff.text or ""
                             affiliations.append(aff_text)
+                            author_affiliations.setdefault(name, []).append(aff_text)
                             found_emails = EMAIL_RE.findall(aff_text)
                             for e in found_emails:
                                 clean_e = e.strip().rstrip(".").lower()
+                                email_candidates.setdefault(clean_e, set()).add(name)
                                 if clean_e not in emails and not any(x in clean_e for x in [".png", ".jpg", ".gif"]):
                                     emails.append(clean_e)
 
@@ -123,7 +132,10 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
                         "emails": list(set(emails)),
                         "doi": doi,
                         "pmid": pmid,
-                        "affiliations": affiliations[:3]
+                        "affiliations": affiliations,
+                        "author_affiliations": author_affiliations,
+                        "email_authors": {email: next(iter(names)) for email, names in email_candidates.items() if len(names) == 1},
+                        "ambiguous_emails": [email for email, names in email_candidates.items() if len(names) > 1]
                     })
             except Exception as ex:
                 log.error(f"[PubMed] Failed to fetch or parse XML batch: {ex}")

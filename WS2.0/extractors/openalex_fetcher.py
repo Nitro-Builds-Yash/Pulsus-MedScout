@@ -7,21 +7,7 @@ import requests
 log = logging.getLogger("extraction.openalex")
 
 # Country name → ISO alpha-2 code (OpenAlex uses these codes)
-_COUNTRY_CODES = {
-    "USA":          "US",
-    "UK":           "GB",
-    "Italy":        "IT",
-    "Spain":        "ES",
-    "Romania":      "RO",
-    "France":       "FR",
-    "Brazil":       "BR",
-    "Germany":      "DE",
-    "Australia":    "AU",
-    "Canada":       "CA",
-    "Mexico":       "MX",
-    "Saudi Arabia": "SA",
-    "Egypt":        "EG",
-}
+from .country_filter import COUNTRY_CODES as _COUNTRY_CODES
 
 # Article type name → OpenAlex type string
 _TYPE_MAP = {
@@ -201,6 +187,7 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
                 "doi":           doi,
                 "source_journal": source_journal,
                 "emails":        found_emails,
+                "author_countries": {(a.get("author") or {}).get("display_name", ""): (a.get("countries") or []) + [i.get("country_code") for i in a.get("institutions", []) if i.get("country_code")] for a in item.get("authorships", [])},
             }
             if download_success:
                 rec["file_path"] = file_path
