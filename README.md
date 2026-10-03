@@ -157,6 +157,17 @@ If no API keys are provided, Pulsus MedScout runs fully autonomously using its b
 
 ---
 
+## 👥 Contributions & Credits
+
+| Contributor / System | Role & Focus | Share |
+|:---|:---|:---:|
+| **Yash** ([@Nitro-Builds-Yash](https://github.com/Nitro-Builds-Yash)) | Project Lead, Architecture, Pipeline & UI Engineering | **80%** |
+| **Claude** (Anthropic) | System Architecture, Code Refactoring & Logic Optimization | **10%** |
+| **Emergent AI** | Extraction Heuristics, Pattern Discovery & AI Router Integration | **10%** |
+
+---
+
 ## ⚖️ License
 
 Distributed under the **MIT License**. See `LICENSE` for details.
+

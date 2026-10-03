@@ -944,6 +944,27 @@ body {
     </div>
   </div>
 
+  <!-- ═════════════════════════════════════════════════════════════════════ -->
+  <!-- 7. FOOTER & CONTRIBUTIONS                                             -->
+  <!-- ═════════════════════════════════════════════════════════════════════ -->
+  <footer class="pt-6 pb-2 text-xs text-slate-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-900/80">
+    <div class="flex items-center gap-2">
+      <span class="text-slate-400 font-bold font-display">Pulsus MedScout</span>
+      <span class="text-slate-700">•</span>
+      <span>Lead: <strong class="text-slate-200">Yash</strong> (80%)</span>
+    </div>
+    <div class="flex items-center gap-2.5 flex-wrap justify-center text-[11px]">
+      <span class="px-2.5 py-1 rounded-lg bg-carbon-850 border border-slate-800 text-slate-300 shadow-sm flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+        Claude AI <span class="text-rose-400 font-bold">10%</span>
+      </span>
+      <span class="px-2.5 py-1 rounded-lg bg-carbon-850 border border-slate-800 text-slate-300 shadow-sm flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        Emergent AI <span class="text-emerald-400 font-bold">10%</span>
+      </span>
+    </div>
+  </footer>
+
 </div>
 
 
