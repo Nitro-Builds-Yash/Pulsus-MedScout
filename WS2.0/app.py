@@ -28,6 +28,8 @@ from extractors.semanticscholar_fetcher import fetch_semanticscholar_papers
 from extractors.preprints_fetcher import fetch_all_preprints_papers
 from extractors.ai_extractor_router import extract_authors_and_emails
 
+from extractors.country_filter import COUNTRY_CODES, country_codes, eligible_authors, contact_allowed, resolve_email_author
+
 app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -55,8 +57,11 @@ except Exception:
     _file_handler = logging.NullHandler()
 
 # Wrap stdout in a UTF-8 stream with 'replace' for unencodable chars
-_utf8_stdout = open(sys.stdout.fileno(), mode="w", encoding="utf-8",
-                    errors="replace", closefd=False, buffering=1)
+try:
+    _utf8_stdout = open(sys.stdout.fileno(), mode="w", encoding="utf-8",
+                        errors="replace", closefd=False, buffering=1)
+except (OSError, ValueError):
+    _utf8_stdout = sys.stdout
 _console_handler = logging.StreamHandler(stream=_utf8_stdout)
 
 logging.basicConfig(
@@ -624,6 +629,8 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
     Completely excludes DOI, PDF File Name, and Source Journal from output.
     """
     filters = filters or {}
+    country_cache = {}
+    selected_countries = filters.get("countries", [])
     short_id = task_id[:8]
     rows = []           # All rows strictly with keys: "Paper Title", "Author Name", "Email ID"
     pending_rows = []   # Batch buffer — flushed every 5 papers
@@ -661,6 +668,9 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         topic_clean = re.sub(r'[^\w\-]', '_', topic).lower()[:80]
         task_update(task_id, "running", "Loading previously seen emails and papers...", percentage=5, contacts_found=0)
         seen_emails, seen_dois = load_seen_data()
+        if selected_countries:
+            # A paper attempted for one country can contain contacts in another.
+            seen_dois = set()
         log.info(
             f"[Dedup] Loaded {len(seen_emails)} seen emails, {len(seen_dois)} seen DOIs."
         )
@@ -722,6 +732,9 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     contacts_found=current_found
                 )
 
+                allowed_authors = eligible_authors(item, selected_countries, country_cache)
+                if allowed_authors == set():
+                    continue
                 paper_title = (item.get("title") or "Untitled Paper").strip()
                 item_doi_raw = item.get("doi", "")
                 item_doi = normalise_doi(item_doi_raw)
@@ -733,7 +746,8 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     continue
 
                 if item_doi:
-                    _record_attempted_doi(item_doi)
+                    if not selected_countries:
+                        _record_attempted_doi(item_doi)
                     seen_dois.add(item_doi)
 
                 # 1. Pre-extracted emails (HTML / API)
@@ -741,24 +755,13 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                 if pre_extracted:
                     for email in pre_extracted:
                         clean_email = clean_and_validate_email(email)
-                        if not clean_email or clean_email in seen_emails:
+                        if not clean_email or clean_email in seen_emails or clean_email in item.get("ambiguous_emails", []):
                             continue
 
-                        matched_author = None
-                        clean_uname = re.sub(r'[^a-z]', '', clean_email.split("@")[0].lower())
-                        for author in item.get("authors", []):
-                            name_parts = [
-                                re.sub(r'[^a-z]', '', p.lower())
-                                for p in author.split() if len(p) >= 2
-                            ]
-                            if any(len(p) >= 3 and p in clean_uname for p in name_parts):
-                                matched_author = author
-                                break
+                        matched_author = resolve_email_author(item, clean_email)
 
-                        if not matched_author and item.get("authors"):
-                            candidate = item["authors"][0]
-                            if is_valid_author(candidate):
-                                matched_author = candidate
+                        if not contact_allowed(matched_author, allowed_authors):
+                            continue
 
                         # STRICT FILTER: Discard if no valid author, no email, or no valid title
                         if is_valid_author(matched_author) and clean_email and is_valid_title(paper_title):
@@ -783,7 +786,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         if not clean_email or clean_email in seen_emails:
                             continue
                         # STRICT FILTER: Discard if no valid author, no email, or no valid title
-                        if not is_valid_author(author) or not is_valid_title(paper_title):
+                        if not contact_allowed(author, allowed_authors) or not is_valid_author(author) or not is_valid_title(paper_title):
                             continue
                         pending_rows.append({
                             "Paper Title": paper_title,
@@ -837,31 +840,27 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                 for item in extra_downloaded:
                     if len(rows) + len(pending_rows) >= max_papers:
                         break
+                    allowed_authors = eligible_authors(item, selected_countries, country_cache)
+                    if allowed_authors == set():
+                        continue
                     paper_title = (item.get("title") or "Untitled Paper").strip()
                     item_doi = normalise_doi(item.get("doi", ""))
                     if item_doi and item_doi in seen_dois:
                         continue
                     if item_doi:
-                        _record_attempted_doi(item_doi)
+                        if not selected_countries:
+                            _record_attempted_doi(item_doi)
                         seen_dois.add(item_doi)
 
                     pre_extracted = item.get("_html_emails") or item.get("emails", [])
                     if pre_extracted:
                         for email in pre_extracted:
                             clean_email = clean_and_validate_email(email)
-                            if not clean_email or clean_email in seen_emails:
+                            if not clean_email or clean_email in seen_emails or clean_email in item.get("ambiguous_emails", []):
                                 continue
-                            matched_author = None
-                            clean_uname = re.sub(r'[^a-z]', '', clean_email.split("@")[0].lower())
-                            for author in item.get("authors", []):
-                                name_parts = [re.sub(r'[^a-z]', '', p.lower()) for p in author.split() if len(p) >= 2]
-                                if any(len(p) >= 3 and p in clean_uname for p in name_parts):
-                                    matched_author = author
-                                    break
-                            if not matched_author and item.get("authors"):
-                                cand = item["authors"][0]
-                                if is_valid_author(cand):
-                                    matched_author = cand
+                            matched_author = resolve_email_author(item, clean_email)
+                            if not contact_allowed(matched_author, allowed_authors):
+                                continue
                             if is_valid_author(matched_author) and clean_email and is_valid_title(paper_title):
                                 pending_rows.append({
                                     "Paper Title": paper_title,
@@ -877,7 +876,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                             clean_email = clean_and_validate_email(email)
                             if not clean_email or clean_email in seen_emails:
                                 continue
-                            if not is_valid_author(author) or not is_valid_title(paper_title):
+                            if not contact_allowed(author, allowed_authors) or not is_valid_author(author) or not is_valid_title(paper_title):
                                 continue
                             pending_rows.append({
                                 "Paper Title": paper_title,
@@ -971,7 +970,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", countries=COUNTRY_CODES)
 
 
 @app.route("/start-extraction", methods=["POST"])
@@ -1009,6 +1008,11 @@ def start_extraction():
         "year_to":       int(raw_year_to)   if raw_year_to.isdigit()   else None,
         "article_types": request.form.getlist("article_types[]"),
     }
+
+    if any(not country_codes([c]) for c in filters["countries"]):
+        return jsonify({"error": "Select supported countries from the list."}), 400
+    if filters["year_from"] and filters["year_to"] and filters["year_from"] > filters["year_to"]:
+        return jsonify({"error": "The start year must be before the end year."}), 400
 
     if not _acquire_extraction_lock():
         return jsonify({

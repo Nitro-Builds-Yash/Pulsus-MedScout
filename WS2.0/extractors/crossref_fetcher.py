@@ -38,21 +38,7 @@ PUBLISHER_BLOCKLIST = [
 ]
 
 # UI country name → OpenAlex ISO code (used in post-fetch affiliation check)
-_COUNTRY_CODES = {
-    "USA":          "US",
-    "UK":           "GB",
-    "Italy":        "IT",
-    "Spain":        "ES",
-    "Romania":      "RO",
-    "France":       "FR",
-    "Brazil":       "BR",
-    "Germany":      "DE",
-    "Australia":    "AU",
-    "Canada":       "CA",
-    "Mexico":       "MX",
-    "Saudi Arabia": "SA",
-    "Egypt":        "EG",
-}
+from .country_filter import COUNTRY_CODES as _COUNTRY_CODES
 
 # UI article type → Crossref type string
 _TYPE_MAP = {
