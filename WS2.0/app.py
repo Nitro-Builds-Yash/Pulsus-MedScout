@@ -666,16 +666,28 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         )
 
         n_sources = len(source_sites)
-        per_source_max = max(1, max_papers // n_sources) if n_sources > 1 else max_papers
+        # Goal-driven quota: To get `max_papers` verified contacts, request sufficient candidates per source
+        # because not all papers have emails or some may be duplicates.
+        if n_sources == 1:
+            per_source_max = min(150, max(25, max_papers * 3))
+        else:
+            per_source_max = min(35, max(7, int((max_papers * 2.5) / min(n_sources, 8)) + 3))
+
         total_downloaded = 0
         doi_skipped_count = 0
 
         for src_idx, source_key in enumerate(source_sites):
+            # Check if target is already achieved
+            if len(rows) + len(pending_rows) >= max_papers:
+                _flush_pending()
+                log.info(f"[Task {short_id}] Target limit of {max_papers} verified contacts achieved! Stopping source search early.")
+                break
+
             source_label, fetcher_func = SOURCE_FETCHERS[source_key]
             topic_pdf_dir = os.path.join(PDFS_BASE_DIR, f"{source_key}_{topic_clean}_pdfs")
             os.makedirs(topic_pdf_dir, exist_ok=True)
 
-            src_base_pct = 10 + int(80 * (src_idx / n_sources))
+            src_base_pct = 10 + int(70 * (src_idx / n_sources))
             task_update(
                 task_id, "running",
                 f"Querying {source_label} ({src_idx + 1}/{n_sources})...",
@@ -684,7 +696,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             )
             log.info(
                 f"[Task {short_id}] Querying source {source_key} ({source_label}) "
-                f"for topic='{topic}', max={per_source_max}"
+                f"for topic='{topic}', candidate_quota={per_source_max}"
             )
 
             try:
@@ -697,12 +709,16 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             num_papers = len(downloaded)
 
             for paper_index, item in enumerate(downloaded):
-                current_pct = src_base_pct + int((80 / n_sources) * ((paper_index + 1) / max(1, num_papers)))
+                if len(rows) + len(pending_rows) >= max_papers:
+                    _flush_pending()
+                    break
+
+                current_pct = src_base_pct + int((70 / n_sources) * ((paper_index + 1) / max(1, num_papers)))
                 current_found = len(rows) + len(pending_rows)
                 task_update(
                     task_id, "running",
                     f"Extracting {source_label}: paper {paper_index + 1} of {num_papers}...",
-                    percentage=min(95, current_pct),
+                    percentage=min(85, current_pct),
                     contacts_found=current_found
                 )
 
@@ -752,8 +768,10 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                                 "Email ID": clean_email,
                             })
                             seen_emails.add(clean_email)
+                            if len(rows) + len(pending_rows) >= max_papers:
+                                break
 
-                    if (paper_index + 1) % 5 == 0:
+                    if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
                         _flush_pending()
                     continue
 
@@ -773,16 +791,105 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                             "Email ID": clean_email,
                         })
                         seen_emails.add(clean_email)
+                        if len(rows) + len(pending_rows) >= max_papers:
+                            break
 
-                if (paper_index + 1) % 5 == 0:
+                if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
                     _flush_pending()
 
             # Flush pending for this source
             _flush_pending()
 
-        # Final flush
+        # Final flush from source iteration
         _flush_pending()
-        
+
+        # -----------------------------------------------------------------
+        # TOP-UP PASS: If target contact count was not yet met, run a focused
+        # deep search across major high-yield engines to reach the user's target.
+        # -----------------------------------------------------------------
+        if len(rows) < max_papers:
+            shortfall = max_papers - len(rows)
+            log.info(f"[Task {short_id}] Initial pass yielded {len(rows)}/{max_papers} contacts. Top-up searching for {shortfall} remaining...")
+            high_yield_keys = ["pubmed", "openalex", "europepmc", "plos", "semanticscholar", "biorxiv"]
+            active_top_up_keys = [k for k in high_yield_keys if k in source_sites]
+            if not active_top_up_keys:
+                active_top_up_keys = source_sites[:3]
+
+            for top_key in active_top_up_keys:
+                if len(rows) >= max_papers:
+                    break
+                needed = max_papers - len(rows)
+                top_label, top_fetcher = SOURCE_FETCHERS[top_key]
+                task_update(
+                    task_id, "running",
+                    f"Top-up harvesting {top_label} to reach target ({len(rows)}/{max_papers} found)...",
+                    percentage=88,
+                    contacts_found=len(rows)
+                )
+                top_quota = min(60, max(15, needed * 3))
+                topic_pdf_dir = os.path.join(PDFS_BASE_DIR, f"{top_key}_{topic_clean}_pdfs")
+                try:
+                    extra_downloaded = top_fetcher(topic, top_quota, topic_pdf_dir, filters=filters)
+                except Exception as ex:
+                    log.warning(f"[Task {short_id}] Top-up error on {top_key}: {ex}")
+                    extra_downloaded = []
+
+                for item in extra_downloaded:
+                    if len(rows) + len(pending_rows) >= max_papers:
+                        break
+                    paper_title = (item.get("title") or "Untitled Paper").strip()
+                    item_doi = normalise_doi(item.get("doi", ""))
+                    if item_doi and item_doi in seen_dois:
+                        continue
+                    if item_doi:
+                        _record_attempted_doi(item_doi)
+                        seen_dois.add(item_doi)
+
+                    pre_extracted = item.get("_html_emails") or item.get("emails", [])
+                    if pre_extracted:
+                        for email in pre_extracted:
+                            clean_email = clean_and_validate_email(email)
+                            if not clean_email or clean_email in seen_emails:
+                                continue
+                            matched_author = None
+                            clean_uname = re.sub(r'[^a-z]', '', clean_email.split("@")[0].lower())
+                            for author in item.get("authors", []):
+                                name_parts = [re.sub(r'[^a-z]', '', p.lower()) for p in author.split() if len(p) >= 2]
+                                if any(len(p) >= 3 and p in clean_uname for p in name_parts):
+                                    matched_author = author
+                                    break
+                            if not matched_author and item.get("authors"):
+                                cand = item["authors"][0]
+                                if is_valid_author(cand):
+                                    matched_author = cand
+                            if is_valid_author(matched_author) and clean_email and is_valid_title(paper_title):
+                                pending_rows.append({
+                                    "Paper Title": paper_title,
+                                    "Author Name": matched_author.strip(),
+                                    "Email ID": clean_email,
+                                })
+                                seen_emails.add(clean_email)
+                                if len(rows) + len(pending_rows) >= max_papers:
+                                    break
+                    elif "file_path" in item and os.path.exists(item["file_path"]):
+                        pairs = extract_author_email_pairs(item["file_path"], item.get("authors", []))
+                        for author, email in pairs:
+                            clean_email = clean_and_validate_email(email)
+                            if not clean_email or clean_email in seen_emails:
+                                continue
+                            if not is_valid_author(author) or not is_valid_title(paper_title):
+                                continue
+                            pending_rows.append({
+                                "Paper Title": paper_title,
+                                "Author Name": author.strip(),
+                                "Email ID": clean_email,
+                            })
+                            seen_emails.add(clean_email)
+                            if len(rows) + len(pending_rows) >= max_papers:
+                                break
+
+                _flush_pending()
+
         # STRICT FILTER: Discard any record where even ONE field (title, author, email) is missing or invalid
         final_strict_rows = []
         for r in rows:
@@ -795,7 +902,8 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     "Author Name": a,
                     "Email ID": clean_and_validate_email(e)
                 })
-        rows = final_strict_rows
+        # Exact target capping: Return up to max_papers
+        rows = final_strict_rows[:max_papers]
         log.info(f"[Task {short_id}] Extraction complete. New verified rows: {len(rows)}")
 
         if not rows:
