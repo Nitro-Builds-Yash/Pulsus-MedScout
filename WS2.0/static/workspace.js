@@ -89,7 +89,7 @@ function showResults(result) {
   records = (result.data || []).filter(row => {
     if (!['Paper Title', 'Author Name', 'Email ID'].every(key => typeof row[key] === 'string' && row[key].trim())) return false;
     const email = row['Email ID'].trim().toLowerCase();
-    if (!/^[\w.%+\-]+@[\w.\-]+\.[a-z]{2,}$/i.test(email) || seen.has(email)) return false;
+    if (!/^[\w.%+\-]+@[\w.\-]+\.[a-z]{2,}$/i.test(email) || seen.has(email) || email.includes('gmail.com')) return false;
     seen.add(email); return true;
   });
   $('resultCount').textContent = records.length; $('navCount').textContent = records.length;

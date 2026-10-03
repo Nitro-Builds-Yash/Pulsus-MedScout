@@ -333,6 +333,8 @@ _IGNORED_DOMAINS = frozenset({
     "frontiersin.org", "mdpi.com", "arxiv.org", "ssrn.com",
     "wiley.com", "springer.com", "elsevier.com", "tandfonline.com",
     "nature.com", "oup.com", "cambridge.org",
+    # Consumer webmail exclusions:
+    "gmail.com",
 })
 
 
@@ -349,6 +351,10 @@ def clean_and_validate_email(raw_email):
     local_part = cleaned.split("@")[0].lower()
     domain = cleaned.split("@")[-1].lower()
     tld = domain.split(".")[-1]
+
+    # Explicitly reject consumer webmail containing gmail.com
+    if "gmail.com" in domain or "gmail.com" in cleaned.lower():
+        return None
 
     # ISSUE-06: Reject generic / non-personal local parts
     if local_part in _GENERIC_LOCAL_PARTS:
