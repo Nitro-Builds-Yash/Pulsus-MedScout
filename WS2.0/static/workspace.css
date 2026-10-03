@@ -779,13 +779,113 @@ details[open] .detail-value:after {
 }
 
 .source-list {
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.source-list::-webkit-scrollbar {
+  width: 5px;
+}
+.source-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+.source-list::-webkit-scrollbar-thumb {
+  background: rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+}
+.source-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.source-card {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  padding: 8px 12px;
+  background: rgba(18, 20, 29, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.source-card:hover {
+  background: rgba(30, 34, 48, 0.8);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.source-card input[type="checkbox"] {
+  margin-top: 3px !important;
+}
+
+.source-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.source-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.source-num {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 10px;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.source-name {
+  font-weight: 600;
+  color: #F1F5F9;
+  font-size: 11.5px;
+}
+
+.source-tag {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: auto;
+}
+
+.source-tag.cat-biomedical {
+  background: rgba(239, 68, 68, 0.15);
+  color: #FCA5A5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.source-tag.cat-preprints {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FCD34D;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.source-tag.cat-global {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7DD3FC;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.source-mode {
+  font-size: 10px;
+  color: #94A3B8;
 }
 
 .source-actions {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
 }
 
 .run-section {

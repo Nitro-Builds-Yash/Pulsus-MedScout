@@ -2,16 +2,79 @@
 const $ = id => document.getElementById(id);
 const form = $('extractForm');
 const sources = [
-  ['pubmed', 'PubMed / NCBI', true], ['europepmc', 'Europe PMC', true], ['openalex', 'OpenAlex', true],
-  ['plos', 'PLOS ONE'], ['crossref', 'Crossref'], ['semanticscholar', 'Semantic Scholar'],
-  ['biorxiv', 'bioRxiv / medRxiv'], ['arxiv', 'arXiv'], ['elife', 'eLife'],
-  ['preprints', 'Preprint indexes'], ['sciencedirect', 'ScienceDirect'], ['imedpub', 'iMedPub']
+  { num: 1,  id: 'plos',            name: 'PLOS ONE',             category: 'Biomedical', mode: 'Direct Search API', checked: false },
+  { num: 2,  id: 'pubmed',          name: 'PubMed / NCBI',         category: 'Biomedical', mode: 'Entrez eUtils (XML)', checked: true },
+  { num: 3,  id: 'biorxiv',         name: 'bioRxiv',              category: 'Preprints',  mode: 'Cold Spring Harbor REST API', checked: false },
+  { num: 4,  id: 'medrxiv',         name: 'medRxiv',              category: 'Preprints',  mode: 'Health Sciences Preprints API', checked: false },
+  { num: 5,  id: 'europepmc',       name: 'Europe PMC',           category: 'Biomedical', mode: 'EMBL-EBI REST API', checked: true },
+  { num: 6,  id: 'arxiv',           name: 'arXiv.org',            category: 'Preprints',  mode: 'Cornell arXiv e-Print API', checked: false },
+  { num: 7,  id: 'openalex',        name: 'OpenAlex',             category: 'Global',     mode: 'Open Scholarly Graph (250M+ papers)', checked: true },
+  { num: 8,  id: 'semanticscholar', name: 'Semantic Scholar',      category: 'Global',     mode: 'AI Knowledge Graph API', checked: false },
+  { num: 9,  id: 'crossref',        name: 'Crossref',             category: 'Global',     mode: 'Official DOI Metadata Engine', checked: false },
+  { num: 10, id: 'elife',           name: 'eLife',                category: 'Biomedical', mode: 'Open-Access Life Sciences API', checked: false },
+  { num: 11, id: 'preprints',       name: 'Preprints.org',        category: 'Preprints',  mode: 'Multidisciplinary Preprints Engine', checked: false },
+  { num: 12, id: 'sciencedirect',   name: 'ScienceDirect',        category: 'Global',     mode: 'Elsevier Open-Access Feed', checked: false },
+  { num: 13, id: 'imedpub',         name: 'iMedPub Group',        category: 'Biomedical', mode: 'Clinical & Medical Journals Engine', checked: false },
+  { num: 14, id: 'osf',             name: 'OSF Preprints',        category: 'Preprints',  mode: 'Center for Open Science API', checked: false },
+  { num: 15, id: 'chemrxiv',        name: 'ChemRxiv',             category: 'Preprints',  mode: 'Chemical Sciences Preprints', checked: false },
+  { num: 16, id: 'peerj',           name: 'PeerJ',                category: 'Biomedical', mode: 'Peer-Reviewed Biological Sciences', checked: false },
+  { num: 17, id: 'f1000',           name: 'F1000Research',        category: 'Biomedical', mode: 'Post-Publication Peer Review', checked: false },
+  { num: 18, id: 'doaj',            name: 'DOAJ',                 category: 'Global',     mode: 'Directory of Open Access Journals', checked: false },
+  { num: 19, id: 'base',            name: 'BASE Search',          category: 'Global',     mode: 'Bielefeld Academic Search Engine', checked: false },
+  { num: 20, id: 'core',            name: 'CORE OA',              category: 'Global',     mode: 'Global Research Aggregator', checked: false },
+  { num: 21, id: 'zenodo',          name: 'Zenodo',               category: 'Preprints',  mode: 'CERN Universal Repository', checked: false },
+  { num: 22, id: 'researchgate',    name: 'ResearchGate',         category: 'Global',     mode: 'Academic Publication Index', checked: false },
+  { num: 23, id: 'frontiers',       name: 'Frontiers',            category: 'Biomedical', mode: 'Frontiers in Medicine & Science', checked: false },
+  { num: 24, id: 'mdpi',            name: 'MDPI',                 category: 'Biomedical', mode: 'Open Access Publisher Index', checked: false },
+  { num: 25, id: 'hindawi',         name: 'Hindawi',              category: 'Biomedical', mode: 'Peer-Reviewed OA Journals', checked: false },
+  { num: 26, id: 'biomedcentral',   name: 'BioMed Central (BMC)', category: 'Biomedical', mode: 'Springer Nature BMC Engine', checked: false },
+  { num: 27, id: 'pmc',             name: 'PMC (PubMed Central)', category: 'Biomedical', mode: 'Full-Text Biomedical Archive', checked: false },
+  { num: 28, id: 'springer',        name: 'Springer Open',        category: 'Global',     mode: 'Springer Nature Open Engine', checked: false },
+  { num: 29, id: 'tandf',           name: 'Taylor & Francis',     category: 'Global',     mode: 'T&F Open Access Index', checked: false },
+  { num: 30, id: 'ssrn',            name: 'SSRN',                 category: 'Preprints',  mode: 'Social Science & Health Preprints', checked: false },
+  { num: 31, id: 'eartharxiv',      name: 'EarthArXiv',           category: 'Preprints',  mode: 'Earth & Planetary Sciences', checked: false },
+  { num: 32, id: 'essoar',          name: 'ESSOAr',               category: 'Preprints',  mode: 'Space & Earth Science Archive', checked: false },
+  { num: 33, id: 'scielo',          name: 'SciELO',               category: 'Global',     mode: 'Latin America & Global Network', checked: false },
+  { num: 34, id: 'hal',             name: 'HAL Open Archive',     category: 'Global',     mode: 'French National Open Archive', checked: false }
 ];
 let records = [], running = false, toastTimer;
-for (const [value, name, selected] of sources) {
-  const label = document.createElement('label'), input = document.createElement('input');
-  input.type = 'checkbox'; input.name = 'source_sites[]'; input.value = value; input.checked = !!selected;
-  label.append(input, document.createTextNode(name)); $('sourceList').append(label);
+for (const src of sources) {
+  const label = document.createElement('label');
+  label.className = 'source-card';
+  label.dataset.category = src.category;
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.name = 'source_sites[]';
+  input.value = src.id;
+  input.checked = !!src.checked;
+
+  const body = document.createElement('div');
+  body.className = 'source-card-body';
+
+  const row = document.createElement('div');
+  row.className = 'source-card-top';
+
+  const num = document.createElement('span');
+  num.className = 'source-num';
+  num.textContent = `#${src.num}`;
+
+  const title = document.createElement('span');
+  title.className = 'source-name';
+  title.textContent = src.name;
+
+  const cat = document.createElement('span');
+  cat.className = `source-tag cat-${src.category.toLowerCase()}`;
+  cat.textContent = src.category;
+
+  row.append(num, title, cat);
+
+  const mode = document.createElement('span');
+  mode.className = 'source-mode';
+  mode.textContent = src.mode;
+
+  body.append(row, mode);
+  label.append(input, body);
+  $('sourceList').append(label);
 }
 const checkedValues = name => Array.from(form.querySelectorAll(`input[name="${name}[]"]:checked`), el => el.value);
 function updateSelection() {
@@ -33,6 +96,16 @@ $('clearCountries').addEventListener('click', () => {
 for (const [id, checked] of [['selectSources', true], ['clearSources', false]]) {
   $(id).addEventListener('click', () => {
     for (const el of form.querySelectorAll('[name="source_sites[]"]')) el.checked = checked;
+    updateSelection();
+  });
+}
+for (const btn of document.querySelectorAll('.source-filter-btn')) {
+  btn.addEventListener('click', () => {
+    const cat = btn.dataset.cat;
+    for (const card of document.querySelectorAll('.source-card')) {
+      const input = card.querySelector('input');
+      if (input) input.checked = (card.dataset.category === cat);
+    }
     updateSelection();
   });
 }
