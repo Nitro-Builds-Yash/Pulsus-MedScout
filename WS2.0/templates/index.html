@@ -10,25 +10,25 @@
 </head>
 <body>
   <aside class="sidebar">
-    <a class="brand" href="/" aria-label="MedScout home"><span class="brand-mark">m<span>+</span></span><span>MedScout<small>BY PULSUS GROUP</small></span></a>
+    <a class="brand" href="/" aria-label="MedScout home"><span class="brand-mark">m<span>+</span></span><span>MedScout<small>OMICS · PULSUS PIPELINE</small></span></a>
     <div class="side-label">YOUR WORKSPACE</div>
     <a href="#workspace" class="nav-item active"><span class="nav-symbol">⌕</span> Literature search <span class="nav-arrow">↗</span></a>
     <a href="#results" class="nav-item"><span class="nav-symbol">≡</span> Search results <span class="side-count" id="navCount">0</span></a>
-    <div class="side-note"><span class="side-label">BUILT FOR RESEARCH</span><p>From published work<br>to the people behind it.</p><div class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-    <div class="sidebar-footer"><span class="avatar">PG</span><div>Pulsus Group<small>Research &amp; outreach</small></div></div>
+    <div class="side-note"><span class="side-label">BUILT FOR RESEARCH</span><p>OMICS International &amp; Pulsus<br>Author Discovery Engine.</p><div class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="sidebar-footer"><span class="avatar">OP</span><div>OMICS &amp; Pulsus<small>Global Medical Outreach</small></div></div>
   </aside>
   <div class="page" id="workspace">
-    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span>Literature search</div><span class="edition">MEDSCOUT <b>RESEARCH EDITION</b></span></header>
+    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span>Literature search</div><span class="edition">OMICS &amp; PULSUS <b>RESEARCH EDITION</b></span></header>
     <main>
       <section class="intro">
         <div class="intro-main">
-          <div class="eyebrow"><span class="pulse-ruby"></span> 34 FEDERATED ENGINES · INSTITUTIONAL REPOSITORY PIPELINE</div>
+          <div class="eyebrow"><span class="pulse-ruby"></span> 34 FEDERATED ENGINES · SCHOLARLY RESEARCH PIPELINE</div>
           <h1>Biomedical Author &amp;<br><em>Literature Intelligence</em></h1>
           <p>Medical Email Scraping</p>
           <div class="engine-badges-row">
             <span class="engine-badge highlight"><span class="badge-dot ruby"></span> 34 Repositories Live</span>
-            <span class="engine-badge"><span class="badge-dot emerald"></span> 100% Institutional Affiliation</span>
-            <span class="engine-badge secure"><span class="badge-dot crimson"></span> Verified Academic Domains</span>
+            <span class="engine-badge"><span class="badge-dot emerald"></span> Verified Academic Affiliation</span>
+            <span class="engine-badge secure"><span class="badge-dot crimson"></span> University &amp; Hospital Domains</span>
             <span class="engine-badge"><span class="badge-dot sapphire"></span> Multi-Tier DOI Deduplication</span>
             <span class="engine-badge"><span class="badge-dot gold"></span> Strict 3-Col Data Contract</span>
           </div>
@@ -48,7 +48,7 @@
             </div>
             <div class="telemetry-stat">
               <span class="stat-number">100%</span>
-              <span class="stat-label">INSTITUTIONAL ONLY</span>
+              <span class="stat-label">ACADEMIC &amp; CLINICAL</span>
             </div>
           </div>
           <div class="telemetry-indicator-bar">
@@ -71,7 +71,7 @@
           <div class="panel-heading"><h2 id="searchHeading">Define your search</h2><span class="quiet-tag">NEW SEARCH</span></div>
           <form id="extractForm">
             <div class="field-block"><label class="field-label" for="topic">Research topic</label><div class="topic-wrap"><span aria-hidden="true">⌕</span><input id="topic" name="topic" required maxlength="250" placeholder="e.g. cancer immunotherapy" autocomplete="off"></div><div class="topic-examples"><span>Try</span><button type="button" data-topic="Cancer immunotherapy">Immunotherapy</button><button type="button" data-topic="CRISPR gene editing">CRISPR</button><button type="button" data-topic="Alzheimer biomarkers">Alzheimer’s</button></div></div>
-            <div class="filter-section"><div class="section-heading"><h3>Author location</h3><div style="display:flex;gap:12px;"><button class="text-button" type="button" id="selectAllCountries">Select all</button><button class="text-button" type="button" id="clearCountries">Clear</button></div></div><p class="field-hint">Choose countries, or leave empty for worldwide.</p><input class="small-input" id="countrySearch" type="search" placeholder="Find a country…" aria-label="Find a country"><div class="country-list" id="countryList">
+            <div class="filter-section"><div class="section-heading"><h3>Geographic Scope &amp; Country</h3><div style="display:flex;gap:12px;"><button class="text-button" type="button" id="selectAllCountries">Select all</button><button class="text-button" type="button" id="clearCountries">Clear</button></div></div><p class="field-hint">Choose countries, or leave empty for worldwide.</p><input class="small-input" id="countrySearch" type="search" placeholder="Find a country…" aria-label="Find a country"><div class="country-list" id="countryList">
               {% for country in countries %}<label class="country-option"><input type="checkbox" name="countries[]" value="{{ country }}"><span>{{ 'United States' if country == 'USA' else 'United Kingdom' if country == 'UK' else country }}</span></label>{% endfor %}
             </div><div class="selection-summary" id="countrySummary">Worldwide · no country restriction</div><p class="evidence-note">Country is checked against the author’s affiliation. Unknown locations are excluded from country-specific searches.</p></div>
             <div class="filter-section"><div class="section-heading"><h3>Publication window</h3><button class="text-button" type="button" id="clearYears">Clear</button></div><div class="year-range"><label><span>From</span><input name="year_from" id="yearFrom" type="number" min="1800" max="2100" placeholder="Any year"></label><span class="range-dash">—</span><label><span>To</span><input name="year_to" id="yearTo" type="number" min="1800" max="2100" placeholder="Any year"></label></div><div class="year-presets"><button type="button" data-years="2">Last 2 years</button><button type="button" data-years="5">Last 5 years</button></div></div>
@@ -87,12 +87,12 @@
           <div class="progress-box" id="progressBox" hidden role="status" aria-live="polite"><div><strong id="statusText">Preparing your search…</strong><span id="percentage">0%</span></div><div class="progress-track"><div id="progressBar"></div></div><small id="progressDetail">Looking for published author contacts</small></div>
           <div class="message-box" id="messageBox" hidden role="alert"></div>
           <div class="result-tools" id="resultTools" hidden><label class="result-search"><span aria-hidden="true">⌕</span><input id="resultSearch" type="search" placeholder="Filter your results" aria-label="Filter results"></label><button class="secondary-button" id="copyAll" type="button">Copy emails</button><a class="export-button" id="downloadLink">Export .xlsx <span aria-hidden="true">↓</span></a></div>
-          <div class="empty-state" id="emptyState"><div class="paper-stack" aria-hidden="true"><div class="paper back"></div><div class="paper front"><div class="paper-journal">PULSUS / LITERATURE</div><div class="paper-title-line"></div><div class="paper-title-line short"></div><div class="paper-rule"></div><div class="paper-lines"></div><div class="paper-author"><span>J</span><div><b></b><i></i></div><span class="paper-plus">+</span></div></div><span class="paper-badge">↗</span></div><h3>The next connection<br>is in the literature.</h3><p>Choose a topic and refine your search.<br>Author contacts will appear here, ready to explore.</p><div class="empty-steps"><span><b>1</b> Define a topic</span><span><b>2</b> Set your scope</span><span><b>3</b> Discover authors</span></div></div>
+          <div class="empty-state" id="emptyState"><div class="paper-stack" aria-hidden="true"><div class="paper back"></div><div class="paper front"><div class="paper-journal">OMICS · PULSUS / INTELLIGENCE</div><div class="paper-title-line"></div><div class="paper-title-line short"></div><div class="paper-rule"></div><div class="paper-lines"></div><div class="paper-author"><span>J</span><div><b></b><i></i></div><span class="paper-plus">+</span></div></div><span class="paper-badge">↗</span></div><h3>The next connection<br>is in the literature.</h3><p>Choose a topic and refine your search.<br>Author contacts will appear here, ready to explore.</p><div class="empty-steps"><span><b>1</b> Define a topic</span><span><b>2</b> Set your scope</span><span><b>3</b> Discover authors</span></div></div>
           <div class="table-wrap" id="tableWrap" hidden><table><thead><tr><th class="number-col">#</th><th>Publication</th><th>Author</th><th>Email address</th></tr></thead><tbody id="tableBody"></tbody></table><p id="noMatches" hidden>No contacts match this filter.</p></div>
           <div class="results-footer"><span class="footer-dot"></span><span>Published contact details · Unique email addresses</span><span id="visibleCount"></span></div>
         </section>
       </div>
-      <footer class="page-footer"><span>Research brings us closer.</span><span>Pulsus MedScout <span class="footer-slash">/</span> Literature to connection</span></footer>
+      <footer class="page-footer"><span>OMICS International · Pulsus Group</span><span>MedScout Intelligence <span class="footer-slash">/</span> Medical Researcher Network</span></footer>
     </main>
   </div><div id="toast" class="toast" role="status" hidden></div>
 </body>
