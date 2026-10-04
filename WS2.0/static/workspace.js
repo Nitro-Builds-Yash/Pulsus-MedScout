@@ -216,27 +216,46 @@ form.addEventListener('submit', async event => {
   records = []; $('resultSearch').value = ''; $('resultCount').textContent = '0'; $('navCount').textContent = '0'; $('visibleCount').textContent = '';
   $('resultTools').hidden = true; $('tableWrap').hidden = true; $('emptyState').hidden = true;
   $('progressBox').hidden = false; $('statusText').textContent = 'Preparing your search…'; $('percentage').textContent = '0%'; $('progressBar').style.width = '0%';
+  if ($('etaTime')) $('etaTime').textContent = 'Est. ~15s';
+  if ($('elapsedCounter')) $('elapsedCounter').textContent = 'Elapsed: 0s';
+  const startTime = Date.now();
   setBusy(true);
   try {
     const {task_id} = await getJSON('/start-extraction', {method: 'POST', body: data});
     if (!task_id) throw new Error('The search could not be started. Try again.');
-    // Sequential polling prevents overlapping requests and duplicate result delivery.
+    // Sequential polling with live ETA countdown
     let failures = 0;
     while (true) {
       let status;
       try { status = await getJSON(`/status/${task_id}`); failures = 0; }
-      catch (error) { if (++failures >= 3) throw error; await new Promise(resolve => setTimeout(resolve, 3000)); continue; }
+      catch (error) { if (++failures >= 3) throw error; await new Promise(resolve => setTimeout(resolve, 2000)); continue; }
       const percentage = Math.max(0, Math.min(100, Number(status.percentage) || 0));
       $('statusText').textContent = status.progress || 'Searching selected repositories…';
       $('percentage').textContent = `${percentage}%`; $('progressBar').style.width = `${percentage}%`;
-      $('progressDetail').textContent = `${status.contacts_found || 0} contacts found · Checking selected filters`;
+      $('progressDetail').textContent = `${status.contacts_found || 0} contacts found · Parallel search active`;
+
+      // Live Elapsed & ETA update
+      const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+      if ($('elapsedCounter')) $('elapsedCounter').textContent = `Elapsed: ${elapsedSec}s`;
+
+      if ($('etaTime')) {
+        const eta = status.eta_seconds;
+        if (typeof eta === 'number' && eta > 0) {
+          $('etaTime').textContent = eta < 60 ? `Est. ~${eta}s` : `Est. ~${Math.ceil(eta / 60)}m`;
+        } else if (percentage >= 90) {
+          $('etaTime').textContent = 'Finishing up…';
+        } else {
+          $('etaTime').textContent = 'Calculating…';
+        }
+      }
+
       if (status.status === 'done' || status.status === 'error') {
         const result = await getJSON(`/result/${task_id}`);
         setBusy(false); $('progressBox').hidden = true; showResults(result);
         if (status.status === 'error') { message(result.message || 'Search failed. Try fewer repositories.'); $('statusTag').textContent = 'Search interrupted'; }
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
   } catch (error) { message(error.message); setBusy(false); $('progressBox').hidden = true; $('emptyState').hidden = false; $('statusTag').textContent = 'Search interrupted'; }
 });

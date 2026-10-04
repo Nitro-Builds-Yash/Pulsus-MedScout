@@ -1482,16 +1482,43 @@ details[open] .detail-value:after {
   border-bottom: 1px solid var(--line);
 }
 
-.progress-box > div:first-child {
+.progress-header-row {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
+  align-items: center;
+  font-size: 13px;
   gap: 12px;
 }
 
 .progress-box strong {
   font-weight: 700;
   color: #FFFFFF;
+}
+
+.progress-meta-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, rgba(128, 0, 32, 0.6) 0%, rgba(225, 29, 72, 0.4) 100%);
+  border: 1px solid rgba(255, 46, 86, 0.6);
+  padding: 3px 9px;
+  border-radius: 99px;
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.35);
+  letter-spacing: 0.3px;
+}
+
+.eta-clock {
+  font-size: 11px;
 }
 
 .progress-track {
@@ -1510,9 +1537,21 @@ details[open] .detail-value:after {
   transition: width .3s;
 }
 
+.progress-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .progress-box small {
   font-size: 10px;
   color: #E2E8F0;
+}
+
+.elapsed-counter {
+  font-family: 'Space Grotesk', monospace;
+  font-weight: 600;
+  color: #FDA4AF !important;
 }
 
 .message-box {

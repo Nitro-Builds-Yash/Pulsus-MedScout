@@ -78,8 +78,20 @@
         </section>
         <section class="results-panel" id="results" aria-labelledby="resultsHeading">
           <div class="results-header"><div><div class="eyebrow">YOUR COLLECTION</div><h2 id="resultsHeading">Search results <span id="resultCount">0</span></h2></div><span class="status-tag" id="statusTag">Ready to search</span></div>
-          <div class="search-context" id="searchContext" hidden></div>
-          <div class="progress-box" id="progressBox" hidden role="status" aria-live="polite"><div><strong id="statusText">Preparing your search…</strong><span id="percentage">0%</span></div><div class="progress-track"><div id="progressBar"></div></div><small id="progressDetail">Looking for published author contacts</small></div>
+          <div class="progress-box" id="progressBox" hidden role="status" aria-live="polite">
+            <div class="progress-header-row">
+              <strong id="statusText">Preparing your search…</strong>
+              <div class="progress-meta-badges">
+                <span class="eta-badge" id="etaBadge"><span class="eta-clock">⏱</span> <span id="etaTime">Est. ~15s</span></span>
+                <span id="percentage">0%</span>
+              </div>
+            </div>
+            <div class="progress-track"><div id="progressBar"></div></div>
+            <div class="progress-footer-row">
+              <small id="progressDetail">Looking for published author contacts</small>
+              <small class="elapsed-counter" id="elapsedCounter">Elapsed: 0s</small>
+            </div>
+          </div>
           <div class="message-box" id="messageBox" hidden role="alert"></div>
           <div class="result-tools" id="resultTools" hidden><label class="result-search"><span aria-hidden="true">⌕</span><input id="resultSearch" type="search" placeholder="Filter your results" aria-label="Filter results"></label><button class="secondary-button" id="copyAll" type="button">Copy emails</button><a class="export-button" id="downloadLink">Export .xlsx <span aria-hidden="true">↓</span></a></div>
           <div class="empty-state" id="emptyState"><div class="paper-stack" aria-hidden="true"><div class="paper back"></div><div class="paper front"><div class="paper-journal">OMICS · PULSUS / INTELLIGENCE</div><div class="paper-title-line"></div><div class="paper-title-line short"></div><div class="paper-rule"></div><div class="paper-lines"></div><div class="paper-author"><span>J</span><div><b></b><i></i></div><span class="paper-plus">+</span></div></div><span class="paper-badge">↗</span></div><h3>The next connection<br>is in the literature.</h3><p>Choose a topic and refine your search.<br>Author contacts will appear here, ready to explore.</p><div class="empty-steps"><span><b>1</b> Define a topic</span><span><b>2</b> Set your scope</span><span><b>3</b> Discover authors</span></div></div>
