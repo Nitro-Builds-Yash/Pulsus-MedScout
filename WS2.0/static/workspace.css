@@ -498,146 +498,135 @@ h1 em {
 .badge-dot.sapphire { background: #38BDF8; box-shadow: 0 0 7px rgba(56, 189, 248, 0.7); }
 .badge-dot.gold { background: #FBBF24; box-shadow: 0 0 7px rgba(251, 191, 36, 0.7); }
 
-.telemetry-card {
-  min-width: 310px;
-  max-width: 360px;
+/* --------------------------------------------------------------------------
+   Pulsus Enterprise Intelligence Card (Dark Maroon & White Theme)
+   -------------------------------------------------------------------------- */
+.pulsus-enterprise-card {
+  min-width: 320px;
+  max-width: 370px;
   margin-left: 24px;
-  background: linear-gradient(145deg, rgba(34, 10, 19, 0.9) 0%, rgba(20, 6, 12, 0.95) 100%);
-  border: 1px solid rgba(255, 46, 86, 0.35);
+  background: linear-gradient(145deg, rgba(74, 3, 20, 0.85) 0%, rgba(21, 4, 11, 0.95) 100%);
+  border: 1px solid rgba(225, 29, 72, 0.45);
   border-radius: 12px;
   padding: 18px 20px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(225, 29, 72, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(128, 0, 32, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(12px);
 }
 
-.telemetry-header {
+.pulsus-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 14px;
+  align-items: center;
+  margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.telemetry-tag {
-  font-family: 'Space Grotesk', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-  color: #FFFFFF;
+.pulsus-brand-badge {
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
-.telemetry-subtitle {
-  font-size: 8.5px;
-  font-weight: 600;
+.pulsus-logo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #FF2E56;
+  box-shadow: 0 0 10px #FF2E56;
+  animation: ruby-beacon 2s infinite ease-in-out;
+}
+
+.pulsus-brand-badge strong {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
   letter-spacing: 0.8px;
+  color: #FFFFFF;
+  display: block;
+  line-height: 1.1;
+}
+
+.pulsus-brand-badge small {
+  font-size: 7.5px;
+  letter-spacing: 1.2px;
   color: #FDA4AF;
+  font-weight: 700;
+  display: block;
   margin-top: 2px;
 }
 
-.telemetry-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10.5px;
+.pulsus-established {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 9.5px;
   font-weight: 800;
   color: #FFFFFF;
-  letter-spacing: 0.8px;
-  background: rgba(225, 29, 72, 0.25);
+  letter-spacing: 1px;
   padding: 3px 8px;
   border-radius: 20px;
-  border: 1px solid rgba(255, 46, 86, 0.4);
+  background: rgba(225, 29, 72, 0.3);
+  border: 1px solid rgba(255, 46, 86, 0.45);
 }
 
-.live-dot.ruby-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #FF2E56;
-  box-shadow: 0 0 8px #FF2E56;
-  animation: ruby-beacon 1.8s infinite;
-}
-
-.telemetry-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 14px;
+.pulsus-card-desc {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #F8FAFC;
   margin-bottom: 14px;
 }
 
-.telemetry-stat {
+.pulsus-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pulsus-stat {
   display: flex;
   flex-direction: column;
 }
 
-.stat-number {
+.p-num {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 800;
   color: #FFFFFF;
   line-height: 1.1;
   letter-spacing: -0.5px;
 }
 
-.stat-label {
-  font-size: 8.5px;
+.p-lbl {
+  font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.8px;
   color: #FDA4AF;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
-.telemetry-indicator-bar {
-  margin-bottom: 12px;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.telemetry-meter {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.telemetry-meter span {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, #E11D48, #FF2E56);
-  box-shadow: 0 0 8px #FF2E56;
-}
-
-.telemetry-meter-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 8.5px;
-  font-weight: 600;
-  color: #E2E8F0;
-  margin-top: 5px;
-}
-
-.telemetry-engines {
+.pulsus-card-footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.engine-pill {
+.pulsus-focus-tag {
   font-size: 9.5px;
   font-weight: 600;
-  padding: 2px 7px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px;
   color: #FFFFFF;
 }
 
-.engine-pill:hover {
-  background: rgba(225, 29, 72, 0.3);
+.pulsus-focus-tag:hover {
+  background: rgba(225, 29, 72, 0.35);
   border-color: #FF2E56;
 }
 
