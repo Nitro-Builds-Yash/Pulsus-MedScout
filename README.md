@@ -1,28 +1,30 @@
-# 🔬 Pulsus MedScout // Biomedical Literature & Author Intelligence Platform
+# 🔬 Pulsus MedScout // OMICS International & Pulsus Group
+## Biomedical Literature & Author Intelligence Platform
 
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![UI Theme](https://img.shields.io/badge/Theme-Red%20%26%20Black-E11D48.svg)](https://tailwindcss.com/)
-[![Repositories](https://img.shields.io/badge/Sources-34%20Live%20Repositories-rose.svg)](#-supported-academic--biomedical-repositories-34-platforms)
+[![UI Theme](https://img.shields.io/badge/Theme-Dark%20Maroon%20%26%20White-800020.svg)](https://tailwindcss.com/)
+[![Repositories](https://img.shields.io/badge/Sources-34%20Live%20Repositories-crimson.svg)](#-supported-academic--biomedical-repositories-34-platforms)
 [![Author](https://img.shields.io/badge/Maintainer-Nitro--Builds--Yash-black.svg?logo=github)](https://github.com/Nitro-Builds-Yash)
+[![Affiliation](https://img.shields.io/badge/Affiliation-OMICS%20%26%20Pulsus-red.svg)](https://www.pulsus.com/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-**Pulsus MedScout** is a high-performance biomedical intelligence and author outreach platform designed to harvest verified academic papers, extract corresponding author contacts, and export clean datasets with zero missing fields.
+**Pulsus MedScout** is a high-performance biomedical intelligence and author outreach platform engineered for **OMICS International** and **Pulsus Group**. It connects directly to **34 scientific repositories** to discover verified medical researchers, laboratory directors, and corresponding authors with strict institutional email validation and zero-tolerance Gmail filtering.
 
 ---
 
 ## 🌟 Key Features
 
-* **🌐 34 Open-Access Scientific Repositories:** Unified real-time search across 34 biomedical, preprint, and global academic engines.
-* **🎨 Modern Red & Black Interface:** High-contrast obsidian dark palette (`#06070B`), dark glass cards, glowing crimson accents (`#E11D48`), and live extraction metrics.
-* **💡 Real-Time Keyword Autocomplete:** Instant typeahead suggestions for medical topics across Oncology, Genomics, Neurology, Cardiology, and Biotechnology.
-* **🔒 Strict 3-Field Completeness Guarantee:** Enforces strict quality control: every exported record must contain **Paper Title**, **Author Name**, and **Email ID**. Any incomplete record is automatically omitted.
-* **📊 Direct Excel (.xlsx) & CSV Export:** Generates styled Excel spreadsheets with automated column sizing and timestamped naming.
-* **🌍 Global Filtering Suite:**
+* **🌐 34 Federated Scientific Repositories:** Unified real-time extraction across 34 clinical, preprint, and global academic engines with master "Select All" and category grouping (Biomedical, Preprints, Global).
+* **🎨 Dark Maroon & Crisp White Interface:** Refined dark obsidian-maroon aesthetic (`#0B0205`, `#15040B`), glowing ruby indicators, and high-contrast pure white typography.
+* **🛡️ Zero Gmail Policy & Quality Verification:** Excludes non-institutional domains (`@gmail.com`) to guarantee outreach deliverability to legitimate academic, university, and hospital departments.
+* **🔒 Strict 3-Field Completeness Guarantee:** Enforces an absolute 3-column data contract: **Paper Title**, **Author Name**, and **Email ID**. Any incomplete or missing field is filtered out automatically.
+* **📊 Direct Excel (.xlsx) & CSV Export:** Formatted Excel spreadsheets with auto-styled columns and instant clipboard copy.
+* **🌍 Geographic Scope & Document Filtering:**
+  * **Geographic Scope & Country:** 36+ global countries with live search and "Select All" controls.
   * **Document Classification:** *Research Article*, *Case Reports*, *Brief Reports*, *Systematic Reports*.
-  * **Publication Years:** Custom range with quick presets (Last 2, 3, or 6 Years).
-  * **Global Countries:** 36+ countries with real-time search filtering.
-* **🤖 AI Extraction Router (OpenRouter & Gemini):** Leverages LLMs to resolve complex author-to-email mapping from unstructured text with heuristic regex fallback.
+  * **Publication Window:** Custom year range with quick-select presets (Last 2 or 5 Years).
+* **🤖 AI Extraction Router (Gemini & OpenRouter):** Intelligently extracts corresponding authors from unstructured full-text and XML layouts with heuristic fallback.
 * **📬 Mailbox Verification:** Verifies DNS MX records and simulates SMTP handshakes (`250 OK`) to confirm deliverability.
 
 ---

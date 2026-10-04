@@ -13,6 +13,8 @@ build/
 develop-eggs/
 dist/
 downloads/
+**/downloads/
+**/downloads/master_email_list.csv
 **/downloads/Pdf Files/
 **/downloads/author details/
 **/downloads/*.lock
