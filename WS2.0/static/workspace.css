@@ -1,23 +1,26 @@
 /* ==========================================================================
-   MedScout Research Workspace // Dark Red & White Edition
+   MedScout Research Workspace // Dark Maroon & Pure White Edition
    Pulsus Group · Biomedical Literature & Author Intelligence
    ========================================================================== */
 
 :root {
-  --navy: #15050A;
+  --navy: #120307;
   --ink: #FFFFFF;
-  --muted: #E2E8F0;
-  --line: rgba(225, 29, 72, 0.35);
-  --line-subtle: rgba(255, 255, 255, 0.14);
-  --page: #0C0205;
-  --panel-bg: #16060C;
-  --panel-elevated: #220A13;
-  --accent: #E11D48;
-  --accent-bright: #FF2E56;
-  --accent-deep: #880A28;
-  --accent-glow: rgba(244, 63, 94, 0.45);
+  --muted: #F8FAFC;
+  --line: rgba(185, 28, 60, 0.45);
+  --line-subtle: rgba(255, 255, 255, 0.16);
+  --page: #0B0205;
+  --panel-bg: #15040B;
+  --panel-elevated: #220612;
+  --maroon: #800020;
+  --maroon-deep: #4A0314;
+  --maroon-light: #A51D38;
+  --accent: #B91C3C;
+  --accent-bright: #E11D48;
+  --accent-deep: #650018;
+  --accent-glow: rgba(185, 28, 60, 0.5);
   --white: #FFFFFF;
-  --ruby-glow: rgba(225, 29, 72, 0.28);
+  --ruby-glow: rgba(185, 28, 60, 0.35);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
   color: var(--ink);
   font-synthesis: none;
@@ -416,11 +419,31 @@ h1 em {
 }
 
 .intro > div > p, .intro-main p {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
   font-size: 13.5px;
-  color: #E2E8F0;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #FFFFFF;
   margin-top: 14px;
-  max-width: 580px;
-  line-height: 1.6;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(128, 0, 32, 0.45) 0%, rgba(74, 3, 20, 0.6) 100%);
+  border: 1px solid rgba(225, 29, 72, 0.5);
+  border-radius: 99px;
+  box-shadow: 0 4px 16px rgba(128, 0, 32, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.intro-main p::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FF2E56;
+  box-shadow: 0 0 8px #FF2E56;
+  display: inline-block;
 }
 
 .engine-badges-row {
