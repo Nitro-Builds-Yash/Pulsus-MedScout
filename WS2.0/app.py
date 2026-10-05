@@ -931,31 +931,53 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
                 _flush_pending()
 
-        # STRICT FILTER: Discard any record where even ONE field (title, author, email) is missing or invalid
+        # STRICT FILTER & STRICT DEDUPLICATION:
+        # Discard any record where even ONE field (title, author, email) is missing or invalid.
+        # Deduplicate strictly across email and (paper title, author) combinations.
         final_strict_rows = []
+        dedup_emails = set()
+        dedup_pairs = set()
+
         for r in rows:
             t = (r.get("Paper Title") or "").strip()
             a = (r.get("Author Name") or "").strip()
             e = (r.get("Email ID") or "").strip()
-            if is_valid_title(t) and is_valid_author(a) and clean_and_validate_email(e):
+            clean_e = clean_and_validate_email(e)
+            if is_valid_title(t) and is_valid_author(a) and clean_e:
+                pair_key = (t.lower(), a.lower())
+                if clean_e in dedup_emails or pair_key in dedup_pairs:
+                    continue
+                dedup_emails.add(clean_e)
+                dedup_pairs.add(pair_key)
                 final_strict_rows.append({
                     "Paper Title": t,
                     "Author Name": a,
-                    "Email ID": clean_and_validate_email(e)
+                    "Email ID": clean_e
                 })
         # Exact target capping: Return up to max_papers
         rows = final_strict_rows[:max_papers]
 
         # FALLBACK: For certain keywords where valid email couldn't be collected,
         # collect the data present up to the contact limit of extraction (with "N/A" for email)
+        # without introducing ANY duplicates.
         if not selected_countries and len(rows) < max_papers and harvested_candidates:
-            seen_titles = {r["Paper Title"].lower() for r in rows}
+            seen_titles = {r["Paper Title"].strip().lower() for r in rows}
+            seen_pairs = {(r["Paper Title"].strip().lower(), r["Author Name"].strip().lower()) for r in rows}
             for cand in harvested_candidates:
                 if len(rows) >= max_papers:
                     break
-                if cand["Paper Title"].lower() not in seen_titles:
-                    rows.append(cand)
-                    seen_titles.add(cand["Paper Title"].lower())
+                cand_title = cand["Paper Title"].strip()
+                cand_author = cand["Author Name"].strip()
+                cand_title_key = cand_title.lower()
+                cand_pair_key = (cand_title_key, cand_author.lower())
+                if cand_title_key not in seen_titles and cand_pair_key not in seen_pairs:
+                    rows.append({
+                        "Paper Title": cand_title,
+                        "Author Name": cand_author,
+                        "Email ID": "N/A"
+                    })
+                    seen_titles.add(cand_title_key)
+                    seen_pairs.add(cand_pair_key)
 
         log.info(f"[Task {short_id}] Extraction complete. New rows (with fallback): {len(rows)}")
 

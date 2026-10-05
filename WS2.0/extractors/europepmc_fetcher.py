@@ -3,6 +3,8 @@ import re
 import logging
 import requests
 
+from .http_client import polite_jitter
+
 log = logging.getLogger("extraction.europepmc")
 
 # Country display name → EuropePMC COUNTRY field values
@@ -170,5 +172,7 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
                 "file_path":      file_path,
                 "pdf_name":       pdf_name,
             })
+
+        polite_jitter(0.3, 0.7)
 
     return records

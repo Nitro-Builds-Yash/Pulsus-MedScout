@@ -204,17 +204,22 @@ async function getJSON(url, options) {
   return response.json();
 }
 function showResults(result) {
-  const seen = new Set();
+  const seenEmails = new Set();
+  const seenPairs = new Set();
   records = (result.data || []).filter(row => {
     if (!['Paper Title', 'Author Name', 'Email ID'].every(key => typeof row[key] === 'string' && row[key].trim())) return false;
+    const title = row['Paper Title'].trim().toLowerCase();
+    const author = row['Author Name'].trim().toLowerCase();
+    const pairKey = `${title}:::${author}`;
+    if (seenPairs.has(pairKey)) return false;
+
     const email = row['Email ID'].trim().toLowerCase();
     const isEmail = /^[\w.%+\-]+@[\w.\-]+\.[a-z]{2,}$/i.test(email);
     if (isEmail) {
-      if (seen.has(email)) return false;
-      seen.add(email);
-      return true;
+      if (seenEmails.has(email)) return false;
+      seenEmails.add(email);
     }
-    // Allow fallback record if email was not available
+    seenPairs.add(pairKey);
     return true;
   });
   $('resultCount').textContent = records.length; $('navCount').textContent = records.length;

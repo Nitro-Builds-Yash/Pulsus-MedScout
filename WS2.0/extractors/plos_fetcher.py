@@ -2,6 +2,8 @@ import os
 import logging
 import requests
 
+from .http_client import polite_jitter
+
 log = logging.getLogger("extraction.plos")
 
 # PLOS article type labels → PLOS article_type values
@@ -92,5 +94,7 @@ def fetch_plos_papers(topic, limit, target_dir, filters=None):
         except Exception as e:
             log.warning(f"[PLOS] PDF download failed for DOI {doi}: {e}")
             continue
+        finally:
+            polite_jitter(0.3, 0.7)
 
     return records
