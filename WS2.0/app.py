@@ -531,6 +531,9 @@ def extract_author_email_pairs(file_path, metadata_authors):
 # -----------------------------------------------------------
 # Dispatch Mapping & Multi-Repository Registry
 # -----------------------------------------------------------
+from extractors.frontiers_fetcher import fetch_frontiers_papers
+from extractors.aha_fetcher import fetch_aha_papers
+
 SOURCE_FETCHERS = {
     # Direct Connectors
     "plos":            ("PLOS ONE",                  fetch_plos_papers),
@@ -556,7 +559,8 @@ SOURCE_FETCHERS = {
     # Biomedical & Clinical Journals
     "peerj":           ("PeerJ",                     fetch_openalex_papers),
     "f1000":           ("F1000Research",             fetch_europepmc_papers),
-    "frontiers":       ("Frontiers",                 fetch_europepmc_papers),
+    "frontiers":       ("Frontiers",                 fetch_frontiers_papers),
+    "ahajournals":     ("AHA Journals",              fetch_aha_papers),
     "mdpi":            ("MDPI",                      fetch_europepmc_papers),
     "hindawi":         ("Hindawi",                   fetch_europepmc_papers),
     "biomedcentral":   ("BioMed Central (BMC)",      fetch_europepmc_papers),

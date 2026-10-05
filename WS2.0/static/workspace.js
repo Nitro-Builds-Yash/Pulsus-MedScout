@@ -24,18 +24,19 @@ const sources = [
   { num: 20, id: 'core',            name: 'CORE OA',              category: 'Global',     mode: 'Global Research Aggregator', checked: false },
   { num: 21, id: 'zenodo',          name: 'Zenodo',               category: 'Preprints',  mode: 'CERN Universal Repository', checked: false },
   { num: 22, id: 'researchgate',    name: 'ResearchGate',         category: 'Global',     mode: 'Academic Publication Index', checked: false },
-  { num: 23, id: 'frontiers',       name: 'Frontiers',            category: 'Biomedical', mode: 'Frontiers in Medicine & Science', checked: false },
-  { num: 24, id: 'mdpi',            name: 'MDPI',                 category: 'Biomedical', mode: 'Open Access Publisher Index', checked: false },
-  { num: 25, id: 'hindawi',         name: 'Hindawi',              category: 'Biomedical', mode: 'Peer-Reviewed OA Journals', checked: false },
-  { num: 26, id: 'biomedcentral',   name: 'BioMed Central (BMC)', category: 'Biomedical', mode: 'Springer Nature BMC Engine', checked: false },
-  { num: 27, id: 'pmc',             name: 'PMC (PubMed Central)', category: 'Biomedical', mode: 'Full-Text Biomedical Archive', checked: false },
-  { num: 28, id: 'springer',        name: 'Springer Open',        category: 'Global',     mode: 'Springer Nature Open Engine', checked: false },
-  { num: 29, id: 'tandf',           name: 'Taylor & Francis',     category: 'Global',     mode: 'T&F Open Access Index', checked: false },
-  { num: 30, id: 'ssrn',            name: 'SSRN',                 category: 'Preprints',  mode: 'Social Science & Health Preprints', checked: false },
-  { num: 31, id: 'eartharxiv',      name: 'EarthArXiv',           category: 'Preprints',  mode: 'Earth & Planetary Sciences', checked: false },
-  { num: 32, id: 'essoar',          name: 'ESSOAr',               category: 'Preprints',  mode: 'Space & Earth Science Archive', checked: false },
-  { num: 33, id: 'scielo',          name: 'SciELO',               category: 'Global',     mode: 'Latin America & Global Network', checked: false },
-  { num: 34, id: 'hal',             name: 'HAL Open Archive',     category: 'Global',     mode: 'French National Open Archive', checked: false }
+  { num: 23, id: 'frontiers',       name: 'Frontiers',            category: 'Biomedical', mode: 'frontiersin.org', checked: true },
+  { num: 24, id: 'ahajournals',     name: 'AHA Journals',         category: 'Biomedical', mode: 'ahajournals.org', checked: true },
+  { num: 25, id: 'mdpi',            name: 'MDPI',                 category: 'Biomedical', mode: 'Open Access Publisher Index', checked: false },
+  { num: 26, id: 'hindawi',         name: 'Hindawi',              category: 'Biomedical', mode: 'Peer-Reviewed OA Journals', checked: false },
+  { num: 27, id: 'biomedcentral',   name: 'BioMed Central (BMC)', category: 'Biomedical', mode: 'Springer Nature BMC Engine', checked: false },
+  { num: 28, id: 'pmc',             name: 'PMC (PubMed Central)', category: 'Biomedical', mode: 'Full-Text Biomedical Archive', checked: false },
+  { num: 29, id: 'springer',        name: 'Springer Open',        category: 'Global',     mode: 'Springer Nature Open Engine', checked: false },
+  { num: 30, id: 'tandf',           name: 'Taylor & Francis',     category: 'Global',     mode: 'T&F Open Access Index', checked: false },
+  { num: 31, id: 'ssrn',            name: 'SSRN',                 category: 'Preprints',  mode: 'Social Science & Health Preprints', checked: false },
+  { num: 32, id: 'eartharxiv',      name: 'EarthArXiv',           category: 'Preprints',  mode: 'Earth & Planetary Sciences', checked: false },
+  { num: 33, id: 'essoar',          name: 'ESSOAr',               category: 'Preprints',  mode: 'Space & Earth Science Archive', checked: false },
+  { num: 34, id: 'scielo',          name: 'SciELO',               category: 'Global',     mode: 'Latin America & Global Network', checked: false },
+  { num: 35, id: 'hal',             name: 'HAL Open Archive',     category: 'Global',     mode: 'French National Open Archive', checked: false }
 ];
 let records = [], running = false, toastTimer;
 for (const src of sources) {
