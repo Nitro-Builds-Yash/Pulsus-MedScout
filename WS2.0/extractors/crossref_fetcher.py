@@ -1,10 +1,14 @@
 import os
 import re
-import time
 import logging
 import requests
 
 log = logging.getLogger("extraction.crossref")
+
+
+class _OpenAlexRateLimitError(RuntimeError):
+    """Raised when OpenAlex blocks PDF-location lookups for this run."""
+
 
 # --- Replace this with your email address ---
 from .http_client import POLITE_USER_AGENT, RESEARCH_EMAIL, polite_jitter
@@ -67,12 +71,16 @@ def _download_pdf(url, file_path, timeout=12):
     try:
         polite_jitter()
         resp = requests.get(url, headers=PDF_HEADERS, timeout=timeout, allow_redirects=True)
+        if resp.status_code == 429:
+            raise RuntimeError("PDF host rate limit reached during Crossref download.")
         if resp.status_code == 200 and (
             resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]
         ):
             with open(file_path, "wb") as f:
                 f.write(resp.content)
             return True
+    except RuntimeError:
+        raise
     except Exception as e:
         log.warning(f"    [PDF] Download failed: {e}")
     return False
@@ -90,6 +98,7 @@ def _query_openalex_chunk(batch):
 
     filter_str = "doi:" + "|".join(batch)
     try:
+        polite_jitter()
         resp = requests.get(
             "https://api.openalex.org/works",
             params={
@@ -101,9 +110,15 @@ def _query_openalex_chunk(batch):
             headers=API_HEADERS,
             timeout=20
         )
+        if resp.status_code == 429:
+            raise _OpenAlexRateLimitError(
+                f"OpenAlex rate limit reached: {resp.text[:150]}"
+            )
         if resp.status_code != 200:
-            log.warning(f"  [OpenAlex batch] HTTP {resp.status_code} — {resp.text[:150]}")
-            return result
+            raise RuntimeError(
+                f"OpenAlex PDF lookup failed with HTTP {resp.status_code}: "
+                f"{resp.text[:150]}"
+            )
 
         for work in resp.json().get("results", []):
             raw_doi = (work.get("doi") or "").replace("https://doi.org/", "").lower()
@@ -135,8 +150,11 @@ def _query_openalex_chunk(batch):
 
             result[raw_doi] = ordered_urls
 
+    except _OpenAlexRateLimitError:
+        raise
     except Exception as e:
         log.error(f"  [OpenAlex batch] Error: {e}")
+        raise
 
     return result
 
@@ -144,8 +162,7 @@ def _query_openalex_chunk(batch):
 def _batch_resolve_pdf_urls(dois):
     """
     Resolve open-access PDF URLs for any number of DOIs via OpenAlex.
-    Automatically splits into chunks of 50 (API limit) with a polite
-    1-second delay between chunks.
+    automatically splits into chunks of 50 (API limit).
 
     Returns {doi_lowercase: [ordered_url_list]} for every DOI that has
     at least one open-access PDF location.
@@ -156,9 +173,11 @@ def _batch_resolve_pdf_urls(dois):
 
     chunks = [dois[i:i + 50] for i in range(0, len(dois), 50)]
     for idx, chunk in enumerate(chunks):
-        if idx > 0:
-            time.sleep(1)   # Polite delay between OpenAlex API calls
-        chunk_result = _query_openalex_chunk(chunk)
+        try:
+            chunk_result = _query_openalex_chunk(chunk)
+        except _OpenAlexRateLimitError as e:
+            log.warning(f"  [OpenAlex] Stopping PDF lookup for this search: {e}")
+            return None
         doi_to_pdf.update(chunk_result)
         log.info(f"  [OpenAlex] Chunk {idx+1}/{len(chunks)}: resolved {len(chunk_result)} PDFs.")
 
@@ -212,15 +231,22 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None, offset=0, **kw
         }
 
         try:
-            time.sleep(1)
+            polite_jitter()
             resp = requests.get(base_url, params=params, headers=API_HEADERS, timeout=15)
+            if resp.status_code == 429:
+                raise RuntimeError(
+                    f"Crossref rate limit reached at offset {offset}; "
+                    "skipping this source."
+                )
             if resp.status_code != 200:
-                log.warning(f"[Crossref] Search failed at offset {offset}. HTTP {resp.status_code}")
-                break
+                raise RuntimeError(
+                    f"Crossref search failed at offset {offset}: HTTP {resp.status_code}"
+                )
             items = resp.json().get("message", {}).get("items", [])
+        except RuntimeError:
+            raise
         except Exception as e:
-            log.error(f"[Crossref] API error: {e}")
-            break
+            raise RuntimeError(f"Crossref API error at offset {offset}: {e}") from e
 
         if not items:
             log.info(f"[Crossref] No more candidates found at offset {offset}.")
@@ -232,6 +258,10 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None, offset=0, **kw
         all_dois = [item.get("DOI", "") for item in items if item.get("DOI")]
         log.info(f"[Crossref] Batch-resolving PDF URLs for {len(all_dois)} DOIs via OpenAlex...")
         doi_to_pdf = _batch_resolve_pdf_urls(all_dois)
+        if doi_to_pdf is None:
+            raise _OpenAlexRateLimitError(
+                "OpenAlex PDF lookup was rate-limited; skipping Crossref so other sources can run."
+            )
         log.info(f"[Crossref] Found open-access PDFs for {len(doi_to_pdf)} / {len(all_dois)} papers in this chunk.")
 
         for item in items:
@@ -269,7 +299,6 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None, offset=0, **kw
             else:
                 source_journal = "Crossref"
 
-            polite_jitter()
             pdf_name = f"crossref_paper_{saved_count + 1}.pdf"
             file_path = os.path.join(target_dir, pdf_name)
 
@@ -317,12 +346,8 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None, offset=0, **kw
             else:
                 log.warning(f"    All URLs failed for this paper — skipping.")
 
-            # Polite delay between download attempts
-            time.sleep(0.5)
-
         # Move to next page of candidates
         offset += 100
 
     log.info(f"\n[Crossref] Done. Successfully downloaded {saved_count} PDFs total.")
     return records
-

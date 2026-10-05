@@ -134,6 +134,62 @@ def test_small_target_uses_small_batch_and_stops_at_target(worker, monkeypatch, 
     later_fetch.assert_not_called()
 
 
+def test_failed_source_switches_to_next_without_retries(worker, monkeypatch, tmp_path):
+    paper = pdf_paper(tmp_path, 31)
+    failed_fetch = Mock(side_effect=RuntimeError("HTTP 429"))
+    working_fetch = Mock(return_value=[paper])
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {
+        'failed': ('Unavailable source', failed_fetch),
+        'working': ('Working source', working_fetch),
+    })
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda path, authors: paper['_test_pairs'],
+    )
+
+    worker._run_extraction_task('country-test', ['failed'], 'cancer', 1, {})
+    result = worker.TASKS['country-test']['result']
+
+    assert result['success']
+    assert result['data'][0]['Email ID'] == 'author31@college.edu'
+    failed_fetch.assert_called_once()
+    working_fetch.assert_called_once()
+
+
+def test_top_up_prioritizes_the_source_with_higher_contact_yield(worker, monkeypatch, tmp_path):
+    papers = [pdf_paper(tmp_path, index) for index in range(41, 44)]
+    metadata_only = {'title': 'Metadata result', 'doi': '10.9999/meta'}
+    source_calls = []
+
+    def lower_yield_source(*args, offset=None, **kwargs):
+        source_calls.append(('low', offset))
+        if offset is None:
+            return [metadata_only]
+        pytest.fail('A higher-yield source should fill the target first')
+
+    def higher_yield_source(*args, offset=None, **kwargs):
+        source_calls.append(('high', offset))
+        if offset is None:
+            return [papers[0]]
+        return papers[1:]
+
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {
+        'low': ('Low-yield source', lower_yield_source),
+        'high': ('High-yield source', higher_yield_source),
+    })
+    paper_by_bytes = {paper['_test_pdf_bytes']: paper for paper in papers}
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: paper_by_bytes[pdf_bytes]['_test_pairs'],
+    )
+
+    worker._run_extraction_task('country-test', ['low'], 'cancer', 3, {})
+    result = worker.TASKS['country-test']['result']
+
+    assert result['success']
+    assert [key for key, _ in source_calls] == ['low', 'high', 'high']
+
+
 def test_shortfall_after_exhaustion_is_explicit(worker, monkeypatch, tmp_path):
     paper = pdf_paper(tmp_path, 1)
     papers = [paper]

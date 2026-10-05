@@ -781,8 +781,10 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
         source_offsets = {s: 0 for s in source_sites}
         source_exhausted = set()
+        source_failed = set()
         source_empty_pages = {s: 0 for s in source_sites}
         source_duplicate_pages = {s: 0 for s in source_sites}
+        source_contact_yields = {s: 0 for s in source_sites}
         seen_paper_keys = set()
         total_downloaded = 0
         doi_skipped_count = 0
@@ -880,15 +882,8 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             os.makedirs(t_dir, exist_ok=True)
             if t_dir not in task_pdf_dirs:
                 task_pdf_dirs.append(t_dir)
-            for attempt in range(3):
-                try:
-                    res = s_func(topic, per_source_max, t_dir, filters=filters)
-                    return s_idx, s_key, s_label, res
-                except Exception as e:
-                    if attempt == 2:
-                        log.error(f"[Task {short_id}] Error in fetcher {s_key}: {e}")
-                        return s_idx, s_key, s_label, []
-                    time.sleep(2 ** attempt)
+            res = s_func(topic, per_source_max, t_dir, filters=filters)
+            return s_idx, s_key, s_label, res
 
         task_update(
             task_id, "running",
@@ -909,7 +904,12 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                 except Exception as ex:
                     source_key = key
                     source_label = SOURCE_FETCHERS[key][0]
-                    log.error(f"[Task {short_id}] Source failed: {ex}")
+                    source_failed.add(source_key)
+                    source_exhausted.add(source_key)
+                    log.error(
+                        f"[Task {short_id}] Source {source_key} failed; "
+                        f"switching to the next source: {ex}"
+                    )
                     downloaded = []
 
                 # Offsets count the requested result window, not only PDFs that
@@ -939,6 +939,9 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         _flush_pending()
                         break
 
+                source_contact_yields[source_key] += (
+                    len(rows) + len(pending_rows) - current_found
+                )
                 _flush_pending()
                 task_update(
                     task_id, "running", contacts_found=len(rows) + len(pending_rows),
@@ -965,13 +968,16 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                 f"Starting adaptive target pagination for {shortfall} remaining contacts..."
             )
             active_top_up_keys = list(source_sites)
-            exhausted_sources = set(source_exhausted)
+            exhausted_sources = set(source_exhausted) | set(source_failed)
             round_idx = 0
             while True:
                 if len(rows) >= max_papers:
                     break
 
-                active_in_round = [k for k in active_top_up_keys if k not in exhausted_sources]
+                active_in_round = sorted(
+                    (k for k in active_top_up_keys if k not in exhausted_sources),
+                    key=lambda key: -source_contact_yields.get(key, 0),
+                )
                 if not active_in_round:
                     break
 
@@ -998,25 +1004,32 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     if topic_pdf_dir not in task_pdf_dirs:
                         task_pdf_dirs.append(topic_pdf_dir)
 
-                    extra_downloaded = []
-                    for attempt in range(3):
+                    try:
+                        extra_downloaded = top_fetcher(
+                            topic, top_quota, topic_pdf_dir,
+                            filters=filters, offset=current_offset
+                        )
+                    except TypeError:
                         try:
-                            extra_downloaded = top_fetcher(topic, top_quota, topic_pdf_dir, filters=filters, offset=current_offset)
-                            break
-                        except TypeError:
-                            try:
-                                extra_downloaded = top_fetcher(topic, top_quota, topic_pdf_dir, filters=filters)
-                                break
-                            except Exception as ex:
-                                if attempt == 2:
-                                    log.warning(f"[Task {short_id}] Top-up error on {top_key}: {ex}")
-                                else:
-                                    time.sleep(2 ** attempt)
+                            extra_downloaded = top_fetcher(
+                                topic, top_quota, topic_pdf_dir, filters=filters
+                            )
                         except Exception as ex:
-                            if attempt == 2:
-                                log.warning(f"[Task {short_id}] Top-up error on {top_key}: {ex}")
-                            else:
-                                time.sleep(2 ** attempt)
+                            log.warning(
+                                f"[Task {short_id}] Top-up failed for {top_key}; "
+                                f"switching sources: {ex}"
+                            )
+                            source_failed.add(top_key)
+                            exhausted_sources.add(top_key)
+                            continue
+                    except Exception as ex:
+                        log.warning(
+                            f"[Task {short_id}] Top-up failed for {top_key}; "
+                            f"switching sources: {ex}"
+                        )
+                        source_failed.add(top_key)
+                        exhausted_sources.add(top_key)
+                        continue
 
                     source_offsets[top_key] = current_offset + _pagination_step(top_key, top_quota)
                     if extra_downloaded:
@@ -1029,10 +1042,14 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         continue
 
                     prior_seen_papers = len(seen_paper_keys)
+                    contacts_before_page = len(rows) + len(pending_rows)
 
                     for item in extra_downloaded:
                         if _process_item(item):
                             _flush_pending()
+                            source_contact_yields[top_key] += max(
+                                0, len(rows) + len(pending_rows) - contacts_before_page
+                            )
                             break
 
                     _flush_pending()

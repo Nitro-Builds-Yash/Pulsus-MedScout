@@ -1,6 +1,4 @@
 import os
-import re
-import time
 import logging
 import requests
 import xml.etree.ElementTree as ET
@@ -17,76 +15,36 @@ API_HEADERS = {
     "User-Agent": POLITE_USER_AGENT
 }
 
-# Public repository identification for HTML page / PDF downloads
+# Public repository identification for PDF downloads
 PDF_HEADERS = {
     "User-Agent": POLITE_USER_AGENT,
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    "Accept": "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8"
 }
-
-# Email regex
-EMAIL_RE = re.compile(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+')
-
-
-# Proper email validation: TLD must be 2+ alphabetic characters only.
-# This rejects version strings like dompurify@2.3.5 or similar false positives.
-VALID_EMAIL_RE = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$')
-
-
-def _extract_emails_from_html(abstract_url):
-    """
-    Fetch the lightweight arXiv abstract HTML page (~50KB) and extract any
-    REAL email addresses found in the page — no PDF download needed.
-
-    Key fix: uses VALID_EMAIL_RE (requires alphabetic TLD) to reject
-    JavaScript library version strings like 'dompurify@2.3.5'.
-    """
-    try:
-        polite_jitter()
-        resp = requests.get(abstract_url, headers=PDF_HEADERS, timeout=8)
-        if resp.status_code != 200:
-            return []
-        html = resp.text
-        raw_emails = EMAIL_RE.findall(html)
-
-        # Apply strict validation: TLD must be alphabetic, not a version number
-        clean = []
-        for e in raw_emails:
-            if not VALID_EMAIL_RE.match(e):
-                continue               # Rejects: dompurify@2.3.5, icon@1.0, etc.
-            if len(e) > 80:
-                continue
-            if any(x in e.lower() for x in ["arxiv", "latex", ".png", ".jpg", ".css", "example"]):
-                continue
-            clean.append(e.lower())
-
-        return list(set(clean))
-    except Exception as e:
-        log.warning(f"[arXiv] HTML email extraction failed for {abstract_url}: {e}")
-        return []
 
 
 def _download_pdf(url, file_path, timeout=12):
-    """Download PDF — used only as fallback when HTML has no emails."""
+    """Download the source PDF used for author/contact extraction."""
     try:
         polite_jitter()
         resp = requests.get(url, headers=PDF_HEADERS, timeout=timeout, allow_redirects=True)
+        if resp.status_code == 429:
+            raise RuntimeError("arXiv rate limit reached while downloading a PDF.")
         if resp.status_code == 200 and (
             resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]
         ):
             with open(file_path, "wb") as f:
                 f.write(resp.content)
             return True
+    except RuntimeError:
+        raise
     except Exception as e:
-        log.warning(f"  [arXiv] PDF fallback failed: {e}")
+        log.warning(f"  [arXiv] PDF download failed: {e}")
     return False
 
 
 def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs):
     """
-    HTML-First strategy:
-      1. Query arXiv API to get paper list (1 request total).
-      2. For each paper, fetch the abstract HTML page (~50KB) to extract emails.
-      3. Only download the full PDF as a last resort if HTML has no emails.
+    Search arXiv and download PDFs for extraction.
 
     filters (dict, optional):
         year_from (int|None): adds submittedDate filter to the arXiv query
@@ -104,7 +62,7 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwarg
         to_str   = f"{year_to}1231"   if year_to   else "20991231"
         search_query += f" AND submittedDate:[{from_str}000000 TO {to_str}235959]"
 
-    base_url = "http://export.arxiv.org/api/query"
+    base_url = "https://export.arxiv.org/api/query"
     params = {
         "search_query": search_query,
         "start":        max(0, int(offset)),
@@ -119,15 +77,13 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwarg
         polite_jitter()
         resp = requests.get(base_url, params=params, headers=API_HEADERS, timeout=15)
         if resp.status_code != 200:
-            log.warning(f"[arXiv] Search failed. HTTP {resp.status_code}")
-            return []
+            raise RuntimeError(f"arXiv search failed with HTTP {resp.status_code}.")
         root = ET.fromstring(resp.text)
     except Exception as e:
-        log.error(f"[arXiv] API error: {e}")
-        return []
+        raise RuntimeError(f"arXiv search failed: {e}") from e
 
     entries = root.findall(f"{{{ATOM_NS}}}entry")
-    log.info(f"[arXiv] Found {len(entries)} results. Extracting via HTML-first approach...")
+    log.info(f"[arXiv] Found {len(entries)} results. Downloading PDFs for extraction...")
 
     records = []
 
@@ -160,51 +116,21 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwarg
                 pdf_url = link.get("href")
                 break
 
-        log.info(f"  [arXiv] ({i + 1}/{min(limit, len(entries))}) HTML scan: {title[:55]}...")
-
-        # ---- STEP 1: Try HTML abstract page first (fast, ~50KB) ----
-        abstract_url = arxiv_id_url  # e.g. http://arxiv.org/abs/1234.5678
-        html_emails = _extract_emails_from_html(abstract_url)
+        log.info(f"  [arXiv] ({i + 1}/{min(limit, len(entries))}) Downloading PDF: {title[:55]}...")
 
         pdf_name = f"arxiv_paper_{i + 1}.pdf"
         file_path = os.path.join(target_dir, pdf_name)
+        if not pdf_url or not _download_pdf(pdf_url, file_path):
+            log.info(f"  [arXiv] PDF unavailable; skipping paper.")
+            continue
 
-        if html_emails:
-            # Create a tiny placeholder file so app.py's PDF parser still works
-            # but pre-inject the emails so no PDF parsing is needed
-            with open(file_path, "wb") as f:
-                f.write(b"HTML_EMAIL_EXTRACTED")
-            record = {
-                "file_path": file_path,
-                "pdf_name": pdf_name,
-                "title": title,
-                "authors": authors_meta,
-                "doi": doi,
-                "_html_emails": html_emails  # Pre-extracted emails — skip PDF parse
-            }
-        elif pdf_url:
-            # ---- STEP 2: Fall back to PDF only if HTML had nothing ----
-            log.info(f"  [arXiv]   No email in HTML — trying PDF fallback...")
-            success = _download_pdf(pdf_url, file_path)
-            record = {
-                "file_path": file_path if success else None,
-                "pdf_name": pdf_name if success else None,
-                "title": title,
-                "authors": authors_meta,
-                "doi": doi
-            }
-        else:
-            record = {
-                "title": title,
-                "authors": authors_meta,
-                "doi": doi
-            }
-
-        records.append(record)
-
-        # Automated Request Jitter between paper fetches
-        polite_jitter()
+        records.append({
+            "file_path": file_path,
+            "pdf_name": pdf_name,
+            "title": title,
+            "authors": authors_meta,
+            "doi": doi,
+        })
 
     log.info(f"[arXiv] Done. Collected metadata for {len(records)} papers.")
     return records
-

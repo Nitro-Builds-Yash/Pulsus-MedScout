@@ -13,8 +13,9 @@ POLITE_USER_AGENT = (
 )
 
 def polite_jitter(min_seconds: float = 1.0, max_seconds: float = 1.5):
-    """Pause between requests to reduce load and respect repository rate limits."""
-    sleep_duration = random.uniform(min_seconds, max_seconds)
+    """Use a varied, polite pause between requests without a fixed cadence."""
+    mode = min_seconds + (max_seconds - min_seconds) * 0.4
+    sleep_duration = random.triangular(min_seconds, max_seconds, mode)
     time.sleep(sleep_duration)
 
 
