@@ -1,8 +1,6 @@
 import os
-import re
 import logging
 import requests
-import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 from .http_client import POLITE_USER_AGENT, polite_jitter
@@ -24,46 +22,10 @@ _PLOS_TYPE_MAP = {
 }
 
 
-def _parse_plos_xml(xml_content):
-    """
-    Parses PLOS manuscript XML to extract emails, mapped corresponding authors,
-    and institutional affiliations without needing PDF parsing.
-    """
-    emails = []
-    email_authors = {}
-    affiliations = []
-    try:
-        root = ET.fromstring(xml_content)
-        corresp_author = None
-        for contrib in root.iter("contrib"):
-            if contrib.attrib.get("contrib-type") == "author":
-                surname = contrib.findtext(".//surname") or ""
-                given = contrib.findtext(".//given-names") or ""
-                name = f"{given} {surname}".strip()
-                for xref in contrib.findall(".//xref"):
-                    if xref.attrib.get("ref-type") == "corresp":
-                        corresp_author = name
-
-        for aff in root.iter("aff"):
-            aff_text = "".join(aff.itertext()).strip()
-            if aff_text:
-                affiliations.append(aff_text)
-
-        for corresp in root.iter("corresp"):
-            text = "".join(corresp.itertext())
-            for e in re.findall(r"[\w\.-]+@[\w\.-]+\.\w+", text):
-                emails.append(e)
-                if corresp_author:
-                    email_authors[e] = corresp_author
-    except Exception:
-        pass
-    return emails, email_authors, affiliations
-
-
 def fetch_plos_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs):
     """
-    Searches PLOS and retrieves articles with direct XML metadata extraction
-    and PDF fallback. Supports offset pagination.
+    Searches PLOS and downloads real article PDFs for contact extraction.
+    Supports offset pagination.
     """
     filters = filters or {}
     year_from = filters.get("year_from")
@@ -115,30 +77,6 @@ def fetch_plos_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs
         pdf_name = f"plos_paper_{i}.pdf"
         file_path = os.path.join(target_dir, pdf_name)
 
-        # 1. Try fast XML manuscript endpoint first
-        xml_url = f"https://journals.plos.org/plosone/article/file?id={doi}&type=manuscript"
-        try:
-            polite_jitter()
-            xml_resp = requests.get(xml_url, headers={"User-Agent": POLITE_USER_AGENT}, timeout=8)
-            if xml_resp.status_code == 200 and len(xml_resp.content) > 500:
-                emails, email_authors, affiliations = _parse_plos_xml(xml_resp.content)
-                # Create stub file to satisfy file_path contract
-                with open(file_path, "wb") as f:
-                    f.write(b"%PDF-1.4\n%Stub\n")
-                return {
-                    "file_path": file_path,
-                    "pdf_name": pdf_name,
-                    "title": title,
-                    "authors": authors_meta,
-                    "doi": doi,
-                    "emails": emails,
-                    "email_authors": email_authors,
-                    "affiliations": affiliations,
-                }
-        except Exception as e:
-            log.debug(f"[PLOS] XML fetch failed for {doi}: {e}")
-
-        # 2. Fallback to PDF download
         pdf_url = f"https://journals.plos.org/plosone/article/file?id={doi}&type=printable"
         try:
             polite_jitter()

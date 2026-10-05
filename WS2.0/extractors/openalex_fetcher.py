@@ -1,6 +1,5 @@
 import os
 import re
-import time
 import logging
 import requests
 
@@ -23,6 +22,10 @@ _TYPE_MAP = {
     "Review": "review",
     "Systematic Review": "review",
 }
+
+
+class _OpenAlexRateLimitError(RuntimeError):
+    """Raised to let the worker switch sources when OpenAlex throttles."""
 
 
 def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset=0, **kwargs):
@@ -91,12 +94,14 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
             }
             resp = requests.get(base_url, params=params, headers=headers, timeout=25)
             if resp.status_code == 429:
-                log.warning("[OpenAlex] Rate limited (HTTP 429). Backing off 2.5s...")
-                time.sleep(2.5)
-                resp = requests.get(base_url, params=params, headers=headers, timeout=25)
+                raise _OpenAlexRateLimitError(
+                    "OpenAlex API rate limit reached; switching to another source."
+                )
             if resp.status_code != 200:
-                log.error(f"[OpenAlex] API error: HTTP {resp.status_code} — {resp.text[:120]}")
-                break
+                raise RuntimeError(
+                    f"OpenAlex API failed with HTTP {resp.status_code}: "
+                    f"{resp.text[:120]}"
+                )
             page_results = resp.json().get("results", [])
             if not page_results:
                 break
@@ -107,10 +112,12 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
             polite_jitter()
 
         log.info(f"[OpenAlex] Got {len(items)} candidates across {page - 1} page(s).")
+    except _OpenAlexRateLimitError:
+        raise
+    except RuntimeError:
+        raise
     except Exception as e:
-        log.error(f"[OpenAlex] API error: {e}")
-        if not items:
-            return []
+        raise RuntimeError(f"OpenAlex API request failed: {e}") from e
 
     records = []
     saved_count = 0
@@ -173,6 +180,10 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
             try:
                 polite_jitter()
                 pdf_resp = requests.get(url, headers={"User-Agent": POLITE_USER_AGENT}, timeout=8, allow_redirects=True)
+                if pdf_resp.status_code == 429:
+                    raise _OpenAlexRateLimitError(
+                        "OpenAlex PDF host rate limit reached; switching to another source."
+                    )
                 if pdf_resp.status_code == 200 and (
                     pdf_resp.content.startswith(b"%PDF") or b"%PDF-" in pdf_resp.content[:1024]
                 ):
@@ -180,6 +191,8 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
                         f.write(pdf_resp.content)
                     download_success = True
                     break
+            except _OpenAlexRateLimitError:
+                raise
             except Exception as e:
                 log.warning(f"[OpenAlex] PDF download failed ({url}): {e}")
 

@@ -2,61 +2,14 @@
 const $ = id => document.getElementById(id);
 const form = $('extractForm');
 const sources = [
-  { num: 1,  id: 'plos',            name: 'PLOS ONE',             category: 'Biomedical', mode: 'Direct Search API', checked: false },
-  { num: 2,  id: 'pubmed',          name: 'PubMed / NCBI',         category: 'Biomedical', mode: 'Entrez eUtils (XML)', checked: true },
-  { num: 3,  id: 'biorxiv',         name: 'bioRxiv',              category: 'Preprints',  mode: 'Cold Spring Harbor REST API', checked: false },
-  { num: 4,  id: 'medrxiv',         name: 'medRxiv',              category: 'Preprints',  mode: 'Health Sciences Preprints API', checked: false },
-  { num: 5,  id: 'europepmc',       name: 'Europe PMC',           category: 'Biomedical', mode: 'EMBL-EBI REST API', checked: true },
-  { num: 6,  id: 'arxiv',           name: 'arXiv.org',            category: 'Preprints',  mode: 'Cornell arXiv e-Print API', checked: false },
-  { num: 7,  id: 'openalex',        name: 'OpenAlex',             category: 'Global',     mode: 'Open Scholarly Graph (250M+ papers)', checked: true },
-  { num: 8,  id: 'semanticscholar', name: 'Semantic Scholar',      category: 'Global',     mode: 'AI Knowledge Graph API', checked: false },
-  { num: 9,  id: 'crossref',        name: 'Crossref',             category: 'Global',     mode: 'Official DOI Metadata Engine', checked: false },
-  { num: 10, id: 'elife',           name: 'eLife',                category: 'Biomedical', mode: 'Open-Access Life Sciences API', checked: false },
-  { num: 11, id: 'preprints',       name: 'Preprints.org',        category: 'Preprints',  mode: 'Multidisciplinary Preprints Engine', checked: false },
-  { num: 12, id: 'sciencedirect',   name: 'ScienceDirect',        category: 'Global',     mode: 'Elsevier Open-Access Feed', checked: false },
-  { num: 13, id: 'imedpub',         name: 'iMedPub Group',        category: 'Biomedical', mode: 'Clinical & Medical Journals Engine', checked: false },
-  { num: 14, id: 'osf',             name: 'OSF Preprints',        category: 'Preprints',  mode: 'Center for Open Science API', checked: false },
-  { num: 15, id: 'chemrxiv',        name: 'ChemRxiv',             category: 'Preprints',  mode: 'Chemical Sciences Preprints', checked: false },
-  { num: 16, id: 'peerj',           name: 'PeerJ',                category: 'Biomedical', mode: 'Peer-Reviewed Biological Sciences', checked: false },
-  { num: 17, id: 'f1000',           name: 'F1000Research',        category: 'Biomedical', mode: 'Post-Publication Peer Review', checked: false },
-  { num: 18, id: 'doaj',            name: 'DOAJ',                 category: 'Global',     mode: 'Directory of Open Access Journals', checked: false },
-  { num: 19, id: 'base',            name: 'BASE Search',          category: 'Global',     mode: 'Bielefeld Academic Search Engine', checked: false },
-  { num: 20, id: 'core',            name: 'CORE OA',              category: 'Global',     mode: 'Global Research Aggregator', checked: false },
-  { num: 21, id: 'zenodo',          name: 'Zenodo',               category: 'Preprints',  mode: 'CERN Universal Repository', checked: false },
-  { num: 22, id: 'researchgate',    name: 'ResearchGate',         category: 'Global',     mode: 'Academic Publication Index', checked: false },
-  { num: 23, id: 'frontiers',       name: 'Frontiers',            category: 'Biomedical', mode: 'frontiersin.org', checked: true },
-  { num: 24, id: 'ahajournals',     name: 'AHA Journals',         category: 'Biomedical', mode: 'ahajournals.org', checked: true },
-  { num: 25, id: 'mdpi',            name: 'MDPI',                 category: 'Biomedical', mode: 'Open Access Publisher Index', checked: false },
-  { num: 26, id: 'hindawi',         name: 'Hindawi',              category: 'Biomedical', mode: 'Peer-Reviewed OA Journals', checked: false },
-  { num: 27, id: 'biomedcentral',   name: 'BioMed Central (BMC)', category: 'Biomedical', mode: 'Springer Nature BMC Engine', checked: false },
-  { num: 28, id: 'pmc',             name: 'PMC (PubMed Central)', category: 'Biomedical', mode: 'Full-Text Biomedical Archive', checked: false },
-  { num: 29, id: 'springer',        name: 'Springer Open',        category: 'Global',     mode: 'Springer Nature Open Engine', checked: false },
-  { num: 30, id: 'tandf',           name: 'Taylor & Francis',     category: 'Global',     mode: 'T&F Open Access Index', checked: false },
-  { num: 31, id: 'ssrn',            name: 'SSRN',                 category: 'Preprints',  mode: 'Social Science & Health Preprints', checked: false },
-  { num: 32, id: 'eartharxiv',      name: 'EarthArXiv',           category: 'Preprints',  mode: 'Earth & Planetary Sciences', checked: false },
-  { num: 33, id: 'essoar',          name: 'ESSOAr',               category: 'Preprints',  mode: 'Space & Earth Science Archive', checked: false },
-  { num: 34, id: 'scielo',          name: 'SciELO',               category: 'Global',     mode: 'Latin America & Global Network', checked: false },
-  { num: 35, id: 'hal',             name: 'HAL Open Archive',     category: 'Global',     mode: 'French National Open Archive', checked: false },
-  { num: 36, id: 'agrirxiv',        name: 'AgriXiv',              category: 'Preprints',  mode: 'OpenAlex discovery + open-PDF resolver', checked: false },
-  { num: 37, id: 'crimrxiv',        name: 'CrimRxiv',             category: 'Preprints',  mode: 'Open preprint indexes', checked: false },
-  { num: 38, id: 'engrxiv',         name: 'engrXiv',              category: 'Preprints',  mode: 'OSF DOI collection + PDF check', checked: false },
-  { num: 39, id: 'focusarchive',    name: 'FocUS Archive',        category: 'Preprints',  mode: 'OSF preprint network', checked: false },
-  { num: 40, id: 'lawarxiv',        name: 'Law Archive',          category: 'Preprints',  mode: 'OSF DOI collection + PDF check', checked: false },
-  { num: 41, id: 'nutrixiv',        name: 'NutriXiv',             category: 'Preprints',  mode: 'OSF DOI collection + PDF check', checked: false },
-  { num: 42, id: 'psyarxiv',        name: 'PsyArXiv',             category: 'Preprints',  mode: 'OSF DOI collection + PDF check', checked: false },
-  { num: 43, id: 'socarxiv',        name: 'SocArXiv',             category: 'Preprints',  mode: 'OSF DOI collection + PDF check', checked: false },
-  { num: 44, id: 'sportrxiv',       name: 'SportRxiv',            category: 'Preprints',  mode: 'OSF DOI collection + PDF check', checked: false },
-  { num: 45, id: 'essopenarchive',  name: 'ESS Open Archive',     category: 'Preprints',  mode: 'Crossref metadata + PDF download', checked: false },
-  { num: 46, id: 'eric',            name: 'ERIC',                 category: 'Global',     mode: 'Public API + ERIC full-text PDFs', checked: false },
-  { num: 47, id: 'scielopreprints', name: 'SciELO Preprints',     category: 'Global',     mode: 'Open preprint indexes', checked: false },
-  { num: 48, id: 'repec',           name: 'RePEc',                category: 'Global',     mode: 'Open preprint indexes', checked: false },
-  { num: 49, id: 'peerjpreprints',  name: 'PeerJ Preprints',      category: 'Global',     mode: 'Open preprint indexes', checked: false },
-  { num: 50, id: 'riojournal',      name: 'RIO Journal',          category: 'Global',     mode: 'Crossref + open-PDF resolver', checked: false },
-  { num: 51, id: 'elis',            name: 'E-LIS / RCLIS',        category: 'Global',     mode: 'OpenAlex open-PDF index', checked: false },
-  { num: 52, id: 'microsoftresearch', name: 'Microsoft Research Publications', category: 'Global', mode: 'OpenAlex discovery + open-PDF resolver', checked: false },
-  { num: 53, id: 'cochrane',        name: 'Cochrane Library',     category: 'Biomedical', mode: 'Open PDF copies only', checked: false },
-  { num: 54, id: 'hubmed',          name: 'HubMed',               category: 'Biomedical', mode: 'Medical & Case Reports API', checked: false },
-  { num: 55, id: 'lancet',          name: 'The Lancet Preprints', category: 'Biomedical', mode: 'Lancet / SSRN mirror', checked: false }
+  { num: 1, id: 'pubmed', name: 'PubMed / NCBI', category: 'Biomedical', mode: 'NCBI Entrez search with PDF-backed full text', checked: true },
+  { num: 2, id: 'europepmc', name: 'Europe PMC', category: 'Biomedical', mode: 'Europe PMC open-access PDF API', checked: true },
+  { num: 3, id: 'plos', name: 'PLOS ONE', category: 'Biomedical', mode: 'PLOS search API + direct PDF', checked: false },
+  { num: 4, id: 'elife', name: 'eLife', category: 'Biomedical', mode: 'eLife search API + direct PDF', checked: false },
+  { num: 5, id: 'arxiv', name: 'arXiv.org', category: 'Preprints', mode: 'arXiv Atom API + direct PDF', checked: false },
+  { num: 6, id: 'biorxiv', name: 'bioRxiv / medRxiv', category: 'Preprints', mode: 'Preprint records + verified PDF', checked: false },
+  { num: 7, id: 'frontiers', name: 'Frontiers', category: 'Biomedical', mode: 'Europe PMC open-access PDF records', checked: false },
+  { num: 8, id: 'ahajournals', name: 'AHA Journals', category: 'Biomedical', mode: 'Europe PMC open-access PDF records', checked: false }
 ];
 let records = [], running = false, toastTimer;
 for (const src of sources) {
@@ -152,7 +105,7 @@ for (const [id, checked] of [['selectSources', true], ['clearSources', false]]) 
 }
 if ($('selectFastSources')) {
   $('selectFastSources').addEventListener('click', () => {
-    const fastSources = new Set(['pubmed', 'europepmc', 'openalex', 'plos', 'crossref', 'semanticscholar', 'elife']);
+    const fastSources = new Set(['pubmed', 'europepmc', 'plos', 'elife']);
     for (const el of form.querySelectorAll('[name="source_sites[]"]')) {
       el.checked = fastSources.has(el.value);
     }

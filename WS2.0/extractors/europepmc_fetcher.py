@@ -69,7 +69,7 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
     params = {
         "query":      query,
         "format":     "json",
-        "pageSize":   min(max(limit * 2, 50), 1000),
+        "pageSize":   min(max(limit, 25), 1000),
         "page":       page,
         "resultType": "core",
     }
@@ -125,19 +125,7 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
                 if clean not in found_emails:
                     found_emails.append(clean)
 
-        # If emails were already found in author affiliations metadata, skip slow PDF downloading!
-        if found_emails:
-            saved += 1
-            records.append({
-                "title":          title,
-                "authors":        authors_meta,
-                "doi":            doi,
-                "source_journal": source_journal,
-                "emails":         found_emails,
-            })
-            continue
-
-        # 2. Try fast direct PDF download only if pmcid is available
+        # The worker counts only contacts extracted from a real PDF.
         pdf_urls = []
         if pmcid:
             pdf_urls.append(f"https://europepmc.org/backend/ptpmcrender.fcgi?accid={pmcid}&blobtype=pdf")

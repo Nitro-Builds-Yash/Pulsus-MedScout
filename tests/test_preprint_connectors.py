@@ -12,8 +12,11 @@ def test_every_ui_source_has_a_backend_connector():
 
     workspace = (Path(__file__).resolve().parents[1] / "WS2.0" / "static" / "workspace.js").read_text(encoding="utf-8")
     ui_sources = set(re.findall(r"\bid:\s*'([a-zA-Z0-9_]+)'", workspace))
-    assert ui_sources
-    assert ui_sources <= set(app.SOURCE_FETCHERS)
+    assert ui_sources == set(app.SOURCE_FETCHERS)
+    assert ui_sources == {
+        "pubmed", "europepmc", "plos", "elife",
+        "arxiv", "biorxiv", "frontiers", "ahajournals",
+    }
 
 
 def test_essoar_fetcher_returns_only_when_pdf_saved(monkeypatch, tmp_path):

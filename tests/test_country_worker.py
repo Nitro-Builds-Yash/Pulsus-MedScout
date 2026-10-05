@@ -11,7 +11,6 @@ import app as application
 @pytest.fixture
 def worker(monkeypatch, tmp_path):
     monkeypatch.setattr(application, 'PDFS_BASE_DIR', str(tmp_path / 'pdf'))
-    monkeypatch.setattr(application, 'EXCEL_BASE_DIR', str(tmp_path))
     monkeypatch.setattr(application, 'load_seen_data', lambda: (set(), {'10.1234/test'}))
     monkeypatch.setattr(application, 'save_new_emails_to_master', Mock())
     monkeypatch.setattr(application, '_record_attempted_doi', Mock())
@@ -40,24 +39,121 @@ def test_pdf_contacts_obey_country_and_topup(worker, monkeypatch, tmp_path, topu
     selected = pdf_paper(tmp_path, 1, 'jsmith@college.edu', 'Jane Smith')
     selected['author_countries'] = {'Jane Smith': ['IN']}
     selected['_test_pairs'] = [('Jane Smith', 'jsmith@college.edu')]
-    # Make the first response full so the connector is eligible for pagination.
-    initial = [{'title': f'Metadata paper {i}', 'doi': f'10.9999/{i}', 'emails': ['fake@college.edu']}
-               for i in range(50)] if topup else [selected]
+    second = pdf_paper(tmp_path, 2, 'second@college.edu', 'John Smith')
+    second['author_countries'] = {'John Smith': ['IN']}
+    second['_test_pairs'] = [('John Smith', 'second@college.edu')]
+    # The first page yields one contact; top-up should stay on that productive source.
+    initial = ([selected] + [
+        {'title': f'Metadata paper {i}', 'doi': f'10.9999/{i}', 'emails': ['fake@college.edu']}
+        for i in range(49)
+    ]) if topup else [selected]
     calls = []
 
     def fetcher(*args, **kwargs):
         calls.append(kwargs)
-        return initial if len(calls) == 1 else [selected]
+        return initial if len(calls) == 1 else [second]
 
     monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', fetcher)})
-    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: selected['_test_pairs'])
-    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {'countries': ['India']})
+    papers_by_bytes = {
+        selected['_test_pdf_bytes']: selected,
+        second['_test_pdf_bytes']: second,
+    }
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: papers_by_bytes[pdf_bytes]['_test_pairs'],
+    )
+    target = 2 if topup else 1
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', target, {'countries': ['India']})
     result = worker.TASKS['country-test']['result']
     assert result['success']
-    assert [row['Email ID'] for row in result['data']] == ['jsmith@college.edu']
+    expected = ['jsmith@college.edu', 'second@college.edu'] if topup else ['jsmith@college.edu']
+    assert [row['Email ID'] for row in result['data']] == expected
     assert len(calls) == (2 if topup else 1)
-    worker.save_new_emails_to_master.assert_called_once()
-    assert (Path(worker.EXCEL_BASE_DIR) / result['download_file']).exists()
+    assert worker.save_new_emails_to_master.call_count == (2 if topup else 1)
+    assert result['download_file'] is None
+    assert not list(tmp_path.rglob('*.xlsx'))
+
+
+def test_selecting_all_supported_countries_means_worldwide(worker, monkeypatch, tmp_path):
+    paper = pdf_paper(tmp_path, 70)
+    fetch_calls = []
+
+    def fetcher(*args, **kwargs):
+        fetch_calls.append(kwargs)
+        return [paper]
+
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'arxiv': ('arXiv', fetcher)})
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: paper['_test_pairs'],
+    )
+
+    worker._run_extraction_task(
+        'country-test', ['arxiv'], 'ecology', 1,
+        {'countries': list(worker.COUNTRY_CODES)},
+    )
+
+    result = worker.TASKS['country-test']['result']
+    assert result['success']
+    assert [row['Email ID'] for row in result['data']] == ['author70@college.edu']
+    assert fetch_calls[0]['filters']['countries'] == []
+
+
+def test_zero_contact_first_page_does_not_exhaust_source(worker, monkeypatch, tmp_path):
+    paper = pdf_paper(tmp_path, 71)
+    calls = []
+    metadata_only = {
+        'title': 'Metadata only paper', 'doi': '10.1000/meta',
+        'authors': ['Jane Smith'], 'emails': ['jsmith@college.edu'],
+    }
+
+    def fetcher(*args, **kwargs):
+        calls.append(kwargs)
+        return [metadata_only] if len(calls) == 1 else [paper]
+
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', fetcher)})
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: paper['_test_pairs'],
+    )
+
+    worker._run_extraction_task('country-test', ['pubmed'], 'ecology', 1, {})
+
+    result = worker.TASKS['country-test']['result']
+    assert result['success']
+    assert [row['Email ID'] for row in result['data']] == ['author71@college.edu']
+    assert len(calls) == 2
+
+
+def test_worker_removes_pdf_and_does_not_create_excel(worker, monkeypatch, tmp_path):
+    monkeypatch.setenv('KEEP_DOWNLOADED_PDFS', '1')
+    extracted_paper = {}
+
+    def source(topic, limit, target_dir, **kwargs):
+        pdf_path = Path(target_dir) / 'temporary-paper.pdf'
+        pdf_path.write_bytes(b'%PDF-1.4 temporary')
+        paper = {
+            'title': 'Cancer research cleanup',
+            'doi': '10.1000/cleanup',
+            'authors': ['Jane Cleanup'],
+            'file_path': str(pdf_path),
+        }
+        extracted_paper['path'] = pdf_path
+        return [paper]
+
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', source)})
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: [('Jane Cleanup', 'cleanup@college.edu')],
+    )
+
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {})
+    result = worker.TASKS['country-test']['result']
+
+    assert result['success']
+    assert not extracted_paper['path'].exists()
+    assert not list(tmp_path.rglob('*.xlsx'))
+    assert result['download_file'] is None
 
 
 def test_metadata_only_and_non_pdf_records_are_not_counted(worker, monkeypatch, tmp_path):
@@ -156,6 +252,32 @@ def test_failed_source_switches_to_next_without_retries(worker, monkeypatch, tmp
     working_fetch.assert_called_once()
 
 
+def test_source_without_pdf_contacts_is_not_retried_before_fallback(worker, monkeypatch, tmp_path):
+    paper = pdf_paper(tmp_path, 32)
+    no_contact_source = Mock(return_value=[{
+        'title': 'Metadata-only result',
+        'doi': '10.9999/metadata-only',
+        'emails': ['not-counted@college.edu'],
+    }])
+    working_source = Mock(return_value=[paper])
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {
+        'metadata': ('Metadata-only source', no_contact_source),
+        'working': ('Working source', working_source),
+    })
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: paper['_test_pairs'],
+    )
+
+    worker._run_extraction_task('country-test', ['metadata'], 'cancer', 1, {})
+    result = worker.TASKS['country-test']['result']
+
+    assert result['success']
+    assert result['data'][0]['Email ID'] == 'author32@college.edu'
+    no_contact_source.assert_called_once()
+    working_source.assert_called_once()
+
+
 def test_top_up_prioritizes_the_source_with_higher_contact_yield(worker, monkeypatch, tmp_path):
     papers = [pdf_paper(tmp_path, index) for index in range(41, 44)]
     metadata_only = {'title': 'Metadata result', 'doi': '10.9999/meta'}
@@ -188,6 +310,33 @@ def test_top_up_prioritizes_the_source_with_higher_contact_yield(worker, monkeyp
 
     assert result['success']
     assert [key for key, _ in source_calls] == ['low', 'high', 'high']
+
+
+def test_productive_source_is_topped_up_before_fallback(worker, monkeypatch, tmp_path):
+    papers = [pdf_paper(tmp_path, index) for index in range(51, 54)]
+    productive_calls = []
+
+    def productive_source(*args, offset=None, **kwargs):
+        productive_calls.append(offset)
+        return [papers[0]] if offset is None else papers[1:]
+
+    fallback_source = Mock(return_value=[])
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {
+        'productive': ('Productive source', productive_source),
+        'fallback': ('Fallback source', fallback_source),
+    })
+    paper_by_bytes = {paper['_test_pdf_bytes']: paper for paper in papers}
+    monkeypatch.setattr(
+        worker, 'extract_author_email_pairs',
+        lambda pdf_bytes, authors: paper_by_bytes[pdf_bytes]['_test_pairs'],
+    )
+
+    worker._run_extraction_task('country-test', ['productive'], 'cancer', 3, {})
+    result = worker.TASKS['country-test']['result']
+
+    assert result['success']
+    assert productive_calls == [None, 5]
+    fallback_source.assert_not_called()
 
 
 def test_shortfall_after_exhaustion_is_explicit(worker, monkeypatch, tmp_path):
