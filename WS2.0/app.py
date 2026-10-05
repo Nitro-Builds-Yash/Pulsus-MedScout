@@ -646,6 +646,8 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
     short_id = task_id[:8]
     rows = []           # All rows strictly with keys: "Paper Title", "Author Name", "Email ID"
     pending_rows = []   # Batch buffer — flushed every 5 papers
+    dedup_emails = set()
+    dedup_pairs = set()
     harvested_candidates = []  # Discovered papers & authors when emails cannot be found
 
     if isinstance(source_sites, str):
@@ -663,17 +665,23 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                 t = (r.get("Paper Title") or "").strip()
                 a = (r.get("Author Name") or "").strip()
                 e = (r.get("Email ID") or "").strip()
-                if is_valid_title(t) and is_valid_author(a) and clean_and_validate_email(e):
+                clean_e = clean_and_validate_email(e)
+                if is_valid_title(t) and is_valid_author(a) and clean_e:
+                    pair_key = (t.lower(), a.lower())
+                    if clean_e in dedup_emails or pair_key in dedup_pairs:
+                        continue
+                    dedup_emails.add(clean_e)
+                    dedup_pairs.add(pair_key)
                     valid_batch.append({
                         "Paper Title": t,
                         "Author Name": a,
-                        "Email ID": clean_and_validate_email(e)
+                        "Email ID": clean_e
                     })
             if valid_batch:
                 save_new_emails_to_master(valid_batch)
                 rows.extend(valid_batch)
                 log.info(
-                    f"[Task {short_id}] Batch flushed {len(valid_batch)} verified rows to master CSV."
+                    f"[Task {short_id}] Batch flushed {len(valid_batch)} verified rows to master CSV. Progress: {len(rows)}/{max_papers}"
                 )
             pending_rows = []
 
@@ -690,20 +698,111 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
         n_sources = len(source_sites)
         start_time = time.time()
-        # Goal-driven quota: To get `max_papers` verified contacts quickly and fulfill target limit
-        if n_sources == 1:
-            per_source_max = min(120, max(10, max_papers * 3))
-        else:
-            per_source_max = min(60, max(8, int((max_papers * 2.5) / min(n_sources, 6)) + 2))
 
+        # Goal-driven quota: Academic papers typically yield 20-35% verified contacts.
+        # Scale quota generously so target (e.g. 100 contacts) can be achieved.
+        needed_papers = max(30, int(max_papers * 3.5))
+        if n_sources == 1:
+            per_source_max = min(500, max(50, needed_papers))
+        else:
+            per_source_max = min(350, max(40, int(needed_papers / max(1, min(n_sources, 6))) + 10))
+
+        source_offsets = {s: 0 for s in source_sites}
         total_downloaded = 0
         doi_skipped_count = 0
+
+        def _process_item(item):
+            nonlocal doi_skipped_count
+            if len(rows) + len(pending_rows) >= max_papers:
+                return True
+
+            allowed_authors = eligible_authors(item, selected_countries, country_cache)
+            if allowed_authors == set():
+                return False
+            paper_title = (item.get("title") or "Untitled Paper").strip()
+            item_doi_raw = item.get("doi", "")
+            item_doi = normalise_doi(item_doi_raw)
+
+            # Deduplicate by DOI if available
+            if item_doi and item_doi in seen_dois:
+                doi_skipped_count += 1
+                return False
+
+            if item_doi:
+                if not selected_countries:
+                    _record_attempted_doi(item_doi)
+                seen_dois.add(item_doi)
+
+            # Keep track of paper & author in case valid email cannot be collected
+            if is_valid_title(paper_title):
+                cand_authors = [a for a in item.get("authors", []) if is_valid_author(a) and contact_allowed(a, allowed_authors)]
+                if cand_authors:
+                    harvested_candidates.append({
+                        "Paper Title": paper_title,
+                        "Author Name": cand_authors[0].strip(),
+                        "Email ID": "N/A"
+                    })
+
+            # 1. Pre-extracted emails (HTML / API)
+            pre_extracted = item.get("_html_emails") or item.get("emails", [])
+            if pre_extracted:
+                for email in pre_extracted:
+                    clean_email = clean_and_validate_email(email)
+                    if not clean_email or clean_email in seen_emails or clean_email in item.get("ambiguous_emails", []):
+                        continue
+
+                    matched_author = resolve_email_author(item, clean_email)
+                    if not contact_allowed(matched_author, allowed_authors):
+                        continue
+
+                    # STRICT FILTER: Discard if no valid author, no email, or no valid title
+                    if is_valid_author(matched_author) and clean_email and is_valid_title(paper_title):
+                        pair_key = (paper_title.lower(), matched_author.strip().lower())
+                        if clean_email in dedup_emails or pair_key in dedup_pairs:
+                            continue
+                        pending_rows.append({
+                            "Paper Title": paper_title,
+                            "Author Name": matched_author.strip(),
+                            "Email ID": clean_email,
+                        })
+                        seen_emails.add(clean_email)
+                        if len(rows) + len(pending_rows) >= max_papers:
+                            return True
+
+                if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
+                    _flush_pending()
+                return len(rows) + len(pending_rows) >= max_papers
+
+            # 2. PDF parsing path
+            if "file_path" in item and os.path.exists(item["file_path"]):
+                pairs = extract_author_email_pairs(item["file_path"], item.get("authors", []))
+                for author, email in pairs:
+                    clean_email = clean_and_validate_email(email)
+                    if not clean_email or clean_email in seen_emails:
+                        continue
+                    if not contact_allowed(author, allowed_authors) or not is_valid_author(author) or not is_valid_title(paper_title):
+                        continue
+                    pair_key = (paper_title.lower(), author.strip().lower())
+                    if clean_email in dedup_emails or pair_key in dedup_pairs:
+                        continue
+                    pending_rows.append({
+                        "Paper Title": paper_title,
+                        "Author Name": author.strip(),
+                        "Email ID": clean_email,
+                    })
+                    seen_emails.add(clean_email)
+                    if len(rows) + len(pending_rows) >= max_papers:
+                        return True
+
+            if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
+                _flush_pending()
+            return len(rows) + len(pending_rows) >= max_papers
 
         # Priority sorting: query high-yield direct-metadata APIs first before slower PDF sources
         FAST_API_SOURCES = {"pubmed", "europepmc", "openalex", "crossref", "plos", "semanticscholar", "elife", "imedpub"}
         sorted_sources = sorted(source_sites, key=lambda s: 0 if s in FAST_API_SOURCES else 1)
 
-        # High-speed parallel dispatch: scale up concurrency to 10 workers for rapid multi-source execution
+        # High-speed parallel dispatch: scale up concurrency
         max_workers = min(10, n_sources)
 
         def _fetch_single_source(src_tuple):
@@ -745,9 +844,9 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     downloaded = []
                     source_label = source_key
 
+                source_offsets[source_key] = max(len(downloaded), per_source_max)
                 completed_sources += 1
                 total_downloaded += len(downloaded)
-                num_papers = len(downloaded)
 
                 current_pct = min(88, 15 + int(65 * (completed_sources / n_sources)))
                 current_found = len(rows) + len(pending_rows)
@@ -759,84 +858,9 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                 )
 
                 for item in downloaded:
-                    if len(rows) + len(pending_rows) >= max_papers:
+                    if _process_item(item):
                         _flush_pending()
                         break
-
-                    allowed_authors = eligible_authors(item, selected_countries, country_cache)
-                    if allowed_authors == set():
-                        continue
-                    paper_title = (item.get("title") or "Untitled Paper").strip()
-                    item_doi_raw = item.get("doi", "")
-                    item_doi = normalise_doi(item_doi_raw)
-
-                    # Deduplicate by DOI if available
-                    if item_doi and item_doi in seen_dois:
-                        doi_skipped_count += 1
-                        continue
-
-                    if item_doi:
-                        if not selected_countries:
-                            _record_attempted_doi(item_doi)
-                        seen_dois.add(item_doi)
-
-                    # Keep track of paper & author in case valid email cannot be collected
-                    if is_valid_title(paper_title):
-                        cand_authors = [a for a in item.get("authors", []) if is_valid_author(a) and contact_allowed(a, allowed_authors)]
-                        if cand_authors:
-                            harvested_candidates.append({
-                                "Paper Title": paper_title,
-                                "Author Name": cand_authors[0].strip(),
-                                "Email ID": "N/A"
-                            })
-
-                    # 1. Pre-extracted emails (HTML / API)
-                    pre_extracted = item.get("_html_emails") or item.get("emails", [])
-                    if pre_extracted:
-                        for email in pre_extracted:
-                            clean_email = clean_and_validate_email(email)
-                            if not clean_email or clean_email in seen_emails or clean_email in item.get("ambiguous_emails", []):
-                                continue
-
-                            matched_author = resolve_email_author(item, clean_email)
-                            if not contact_allowed(matched_author, allowed_authors):
-                                continue
-
-                            # STRICT FILTER: Discard if no valid author, no email, or no valid title
-                            if is_valid_author(matched_author) and clean_email and is_valid_title(paper_title):
-                                pending_rows.append({
-                                    "Paper Title": paper_title,
-                                    "Author Name": matched_author.strip(),
-                                    "Email ID": clean_email,
-                                })
-                                seen_emails.add(clean_email)
-                                if len(rows) + len(pending_rows) >= max_papers:
-                                    break
-
-                        if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
-                            _flush_pending()
-                        continue
-
-                    # 2. PDF parsing path
-                    if "file_path" in item and os.path.exists(item["file_path"]):
-                        pairs = extract_author_email_pairs(item["file_path"], item.get("authors", []))
-                        for author, email in pairs:
-                            clean_email = clean_and_validate_email(email)
-                            if not clean_email or clean_email in seen_emails:
-                                continue
-                            if not contact_allowed(author, allowed_authors) or not is_valid_author(author) or not is_valid_title(paper_title):
-                                continue
-                            pending_rows.append({
-                                "Paper Title": paper_title,
-                                "Author Name": author.strip(),
-                                "Email ID": clean_email,
-                            })
-                            seen_emails.add(clean_email)
-                            if len(rows) + len(pending_rows) >= max_papers:
-                                break
-
-                    if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
-                        _flush_pending()
 
                 _flush_pending()
 
@@ -844,96 +868,81 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         _flush_pending()
 
         # -----------------------------------------------------------------
-        # TOP-UP PASS: If target contact count was not yet met, run a focused
-        # deep search across major high-yield engines to reach the user's target.
+        # TARGET-DRIVEN ADAPTIVE TOP-UP PASS:
+        # If target contact count was not yet met, systematically paginate
+        # and harvest subsequent paper batches from high-yield engines
+        # until the target limit (max_papers) is accurately satisfied.
         # -----------------------------------------------------------------
         if len(rows) < max_papers:
             shortfall = max_papers - len(rows)
-            log.info(f"[Task {short_id}] Initial pass yielded {len(rows)}/{max_papers} contacts. Top-up searching for {shortfall} remaining...")
-            high_yield_keys = ["pubmed", "openalex", "europepmc", "plos", "semanticscholar", "biorxiv"]
+            log.info(
+                f"[Task {short_id}] Pass 1 yielded {len(rows)}/{max_papers} contacts. "
+                f"Starting adaptive target pagination for {shortfall} remaining contacts..."
+            )
+            high_yield_keys = ["pubmed", "europepmc", "openalex", "plos", "semanticscholar", "crossref", "arxiv", "biorxiv"]
             active_top_up_keys = [k for k in high_yield_keys if k in source_sites]
             if not active_top_up_keys:
-                active_top_up_keys = source_sites[:3]
+                active_top_up_keys = [k for k in source_sites if k in SOURCE_FETCHERS][:4]
 
-            for top_key in active_top_up_keys:
+            exhausted_sources = set()
+            max_topup_rounds = 8
+
+            for round_idx in range(max_topup_rounds):
                 if len(rows) >= max_papers:
                     break
-                needed = max_papers - len(rows)
-                top_label, top_fetcher = SOURCE_FETCHERS[top_key]
-                task_update(
-                    task_id, "running",
-                    f"Top-up harvesting {top_label} to reach target ({len(rows)}/{max_papers} found)...",
-                    percentage=88,
-                    contacts_found=len(rows)
-                )
-                top_quota = min(60, max(15, needed * 3))
-                topic_pdf_dir = os.path.join(PDFS_BASE_DIR, f"{top_key}_{topic_clean}_pdfs")
-                try:
-                    extra_downloaded = top_fetcher(topic, top_quota, topic_pdf_dir, filters=filters)
-                except Exception as ex:
-                    log.warning(f"[Task {short_id}] Top-up error on {top_key}: {ex}")
-                    extra_downloaded = []
 
-                for item in extra_downloaded:
-                    if len(rows) + len(pending_rows) >= max_papers:
+                active_in_round = [k for k in active_top_up_keys if k not in exhausted_sources]
+                if not active_in_round:
+                    break
+
+                for top_key in active_in_round:
+                    if len(rows) >= max_papers:
                         break
-                    allowed_authors = eligible_authors(item, selected_countries, country_cache)
-                    if allowed_authors == set():
+
+                    needed = max_papers - len(rows)
+                    top_label, top_fetcher = SOURCE_FETCHERS[top_key]
+                    current_pct = min(94, 70 + int(24 * (len(rows) / max(1, max_papers))))
+                    task_update(
+                        task_id, "running",
+                        f"Harvesting {top_label} (page {round_idx + 2}) to reach target ({len(rows)}/{max_papers} found)...",
+                        percentage=current_pct,
+                        contacts_found=len(rows)
+                    )
+
+                    # Dynamic batch quota: request proportional to shortfall
+                    top_quota = min(350, max(25, needed * 3))
+                    current_offset = source_offsets.get(top_key, 0)
+                    topic_pdf_dir = os.path.join(PDFS_BASE_DIR, f"{top_key}_{topic_clean}_pdfs")
+
+                    try:
+                        extra_downloaded = top_fetcher(topic, top_quota, topic_pdf_dir, filters=filters, offset=current_offset)
+                    except TypeError:
+                        try:
+                            extra_downloaded = top_fetcher(topic, top_quota, topic_pdf_dir, filters=filters)
+                        except Exception as ex:
+                            log.warning(f"[Task {short_id}] Top-up error on {top_key}: {ex}")
+                            extra_downloaded = []
+                    except Exception as ex:
+                        log.warning(f"[Task {short_id}] Top-up error on {top_key}: {ex}")
+                        extra_downloaded = []
+
+                    source_offsets[top_key] = current_offset + max(len(extra_downloaded), top_quota)
+
+                    if not extra_downloaded:
+                        exhausted_sources.add(top_key)
                         continue
-                    paper_title = (item.get("title") or "Untitled Paper").strip()
-                    item_doi = normalise_doi(item.get("doi", ""))
-                    if item_doi and item_doi in seen_dois:
-                        continue
-                    if item_doi:
-                        if not selected_countries:
-                            _record_attempted_doi(item_doi)
-                        seen_dois.add(item_doi)
 
-                    if is_valid_title(paper_title):
-                        cand_authors = [a for a in item.get("authors", []) if is_valid_author(a) and contact_allowed(a, allowed_authors)]
-                        if cand_authors:
-                            harvested_candidates.append({
-                                "Paper Title": paper_title,
-                                "Author Name": cand_authors[0].strip(),
-                                "Email ID": "N/A"
-                            })
+                    for item in extra_downloaded:
+                        if _process_item(item):
+                            _flush_pending()
+                            break
 
-                    pre_extracted = item.get("_html_emails") or item.get("emails", [])
-                    if pre_extracted:
-                        for email in pre_extracted:
-                            clean_email = clean_and_validate_email(email)
-                            if not clean_email or clean_email in seen_emails or clean_email in item.get("ambiguous_emails", []):
-                                continue
-                            matched_author = resolve_email_author(item, clean_email)
-                            if not contact_allowed(matched_author, allowed_authors):
-                                continue
-                            if is_valid_author(matched_author) and clean_email and is_valid_title(paper_title):
-                                pending_rows.append({
-                                    "Paper Title": paper_title,
-                                    "Author Name": matched_author.strip(),
-                                    "Email ID": clean_email,
-                                })
-                                seen_emails.add(clean_email)
-                                if len(rows) + len(pending_rows) >= max_papers:
-                                    break
-                    elif "file_path" in item and os.path.exists(item["file_path"]):
-                        pairs = extract_author_email_pairs(item["file_path"], item.get("authors", []))
-                        for author, email in pairs:
-                            clean_email = clean_and_validate_email(email)
-                            if not clean_email or clean_email in seen_emails:
-                                continue
-                            if not contact_allowed(author, allowed_authors) or not is_valid_author(author) or not is_valid_title(paper_title):
-                                continue
-                            pending_rows.append({
-                                "Paper Title": paper_title,
-                                "Author Name": author.strip(),
-                                "Email ID": clean_email,
-                            })
-                            seen_emails.add(clean_email)
-                            if len(rows) + len(pending_rows) >= max_papers:
-                                break
+                    _flush_pending()
+                    if len(rows) >= max_papers:
+                        log.info(f"[Task {short_id}] Target of {max_papers} verified contacts achieved during top-up!")
+                        break
 
-                _flush_pending()
+            _flush_pending()
 
         # STRICT FILTER & STRICT DEDUPLICATION:
         # Discard any record where even ONE field (title, author, email) is missing or invalid.

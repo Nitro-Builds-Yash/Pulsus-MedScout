@@ -70,3 +70,29 @@ def test_ambiguous_email_never_enters_worker_results(worker, monkeypatch):
 def test_invalid_filters_rejected_before_start(data):
     response = application.app.test_client().post('/start-extraction', data=data)
     assert response.status_code == 400
+
+
+def test_target_count_fulfillment(worker, monkeypatch):
+    # Batch 1 returns 2 contacts (short of target 5)
+    # Batch 2 returns 4 contacts (satisfying target of 5 with exact capping)
+    batch1 = [
+        {'title': f'Paper {i}', 'doi': f'10.1000/{i}',
+         'authors': [f'Author {i}'],
+         'emails': [f'author{i}@university.edu'],
+         'email_authors': {f'author{i}@university.edu': f'Author {i}'}}
+        for i in range(1, 3)
+    ]
+    batch2 = [
+        {'title': f'Paper {i}', 'doi': f'10.1000/{i}',
+         'authors': [f'Author {i}'],
+         'emails': [f'author{i}@university.edu'],
+         'email_authors': {f'author{i}@university.edu': f'Author {i}'}}
+        for i in range(3, 7)
+    ]
+    fetcher = Mock(side_effect=[batch1, batch2])
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', fetcher)})
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 5, {})
+    result = worker.TASKS['country-test']['result']
+    assert result['success']
+    assert len(result['data']) == 5
+    assert fetcher.call_count == 2

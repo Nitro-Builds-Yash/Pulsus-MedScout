@@ -8,10 +8,11 @@ log = logging.getLogger("extraction.semanticscholar")
 
 EMAIL_RE = re.compile(r'[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}')
 
-def fetch_semanticscholar_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_semanticscholar_papers(topic, limit=10, target_dir=None, filters=None, offset=0, **kwargs):
     """
     Fetches papers from the Semantic Scholar Academic Graph API (200M+ research papers).
     Retrieves paper metadata, abstracts, authors, and open access PDF download links.
+    Supports offset pagination.
     """
     filters = filters or {}
     year_from = filters.get("year_from")
@@ -37,6 +38,7 @@ def fetch_semanticscholar_papers(topic, limit=10, target_dir=None, filters=None)
     params = {
         "query": topic,
         "limit": min(limit, 100),
+        "offset": max(0, int(offset)),
         "fields": "paperId,title,authors,abstract,year,externalIds,openAccessPdf"
     }
     if year_param:

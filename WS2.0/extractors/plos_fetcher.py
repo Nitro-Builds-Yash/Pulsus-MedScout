@@ -21,9 +21,10 @@ _PLOS_TYPE_MAP = {
 }
 
 
-def fetch_plos_papers(topic, limit, target_dir, filters=None):
+def fetch_plos_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs):
     """
     Searches and downloads PDFs exclusively from PLOS.
+    Supports start offset pagination.
 
     filters (dict, optional):
         year_from     (int|None):  post-fetch year check on publication_date field
@@ -53,12 +54,13 @@ def fetch_plos_papers(topic, limit, target_dir, filters=None):
 
     base_url = "https://api.plos.org/search"
     params = {
-        "q":    query,
-        "fl":   "id,title,author_display,publication_date",
-        "wt":   "json",
-        "rows": limit,
+        "q":     query,
+        "fl":    "id,title,author_display,publication_date",
+        "wt":    "json",
+        "rows":  limit,
+        "start": max(0, int(offset)),
     }
-    log.info(f"[PLOS] Query: {query!r}")
+    log.info(f"[PLOS] Query: {query!r} (start={offset})")
 
     try:
         resp = requests.get(base_url, params=params, timeout=25)

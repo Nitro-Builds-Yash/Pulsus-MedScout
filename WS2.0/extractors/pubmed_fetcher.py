@@ -11,11 +11,12 @@ log = logging.getLogger("extraction.pubmed")
 
 EMAIL_RE = re.compile(r'[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}')
 
-def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None, offset=0, **kwargs):
     """
     Fetches scientific papers from PubMed (NCBI Entrez API).
     Extracts paper titles, authors, and email addresses directly from
     author affiliation fields in PubMed XML (eFetch).
+    Supports offset pagination via retstart.
     """
     filters = filters or {}
     year_from = filters.get("year_from")
@@ -39,6 +40,7 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
         "db": "pubmed",
         "term": query,
         "retmax": min(limit, 1000),
+        "retstart": max(0, int(offset)),
         "retmode": "json",
         "sort": "pub_date"
     }

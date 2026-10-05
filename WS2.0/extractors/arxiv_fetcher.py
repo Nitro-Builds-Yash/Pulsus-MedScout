@@ -79,7 +79,7 @@ def _download_pdf(url, file_path, timeout=12):
     return False
 
 
-def fetch_arxiv_papers(topic, limit, target_dir, filters=None):
+def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs):
     """
     HTML-First strategy:
       1. Query arXiv API to get paper list (1 request total).
@@ -105,13 +105,13 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None):
     base_url = "http://export.arxiv.org/api/query"
     params = {
         "search_query": search_query,
-        "start":        0,
+        "start":        max(0, int(offset)),
         "max_results":  limit,
         "sortBy":       "relevance",
         "sortOrder":    "descending",
     }
 
-    log.info(f"[arXiv] Searching: {search_query!r} (up to {limit} papers)...")
+    log.info(f"[arXiv] Searching: {search_query!r} (start={offset}, up to {limit} papers)...")
 
     try:
         time.sleep(1)  # Reduced from 3s — only 1 API call needed

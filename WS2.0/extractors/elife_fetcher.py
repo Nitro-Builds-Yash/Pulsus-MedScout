@@ -21,8 +21,9 @@ _ELIFE_TYPE_MAP = {
 }
 
 
-def fetch_elife_papers(topic, limit, target_dir, filters=None):
+def fetch_elife_papers(topic, limit, target_dir, filters=None, page=1, offset=0, **kwargs):
     """Searches and downloads PDFs exclusively from eLife.
+    Supports page and offset pagination.
 
     filters (dict, optional):
         year_from     (int|None):  mapped to start-date in eLife API
@@ -36,9 +37,11 @@ def fetch_elife_papers(topic, limit, target_dir, filters=None):
     article_types = filters.get("article_types", [])
 
     base_url = "https://api.elifesciences.org/search"
+    if offset and page == 1:
+        page = max(1, (int(offset) // min(limit, 100)) + 1)
     params = {
         "for":      topic,
-        "page":     1,
+        "page":     max(1, int(page)),
         "per-page": min(limit, 100),
         "sort":     "relevance",
     }

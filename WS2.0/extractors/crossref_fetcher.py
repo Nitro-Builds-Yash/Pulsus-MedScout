@@ -164,9 +164,10 @@ def _batch_resolve_pdf_urls(dois):
     return doi_to_pdf
 
 
-def fetch_crossref_papers(topic, limit, target_dir, filters=None):
+def fetch_crossref_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs):
     """
     Two-phase approach for maximum PDF coverage.
+    Supports offset pagination.
 
     filters (dict, optional):
         year_from     (int|None):  applied via Crossref 'from-pub-date' filter
@@ -191,13 +192,13 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None):
     if iso_codes:
         log.info(f"[Crossref] Post-fetch country filter: {iso_codes}")
 
-    log.info(f"[Crossref] Searching for: '{topic}' (targeting {limit} papers)...")
+    offset = max(0, int(offset))
+    log.info(f"[Crossref] Searching for: '{topic}' (start offset={offset}, targeting {limit} papers)...")
 
     base_url   = "https://api.crossref.org/works"
     records    = []
     saved_count= 0
-    offset     = 0
-    max_offset = max(2000, limit * 2)
+    max_offset = max(2000, offset + limit * 3)
 
     while saved_count < limit and offset < max_offset:
         params = {

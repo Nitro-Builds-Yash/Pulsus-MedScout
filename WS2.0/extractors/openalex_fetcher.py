@@ -25,9 +25,10 @@ _TYPE_MAP = {
 }
 
 
-def fetch_openalex_papers(topic, limit, target_dir, filters=None):
+def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset=0, **kwargs):
     """
     Searches and downloads Open Access PDFs from OpenAlex REST API.
+    Supports page and offset pagination.
 
     filters (dict, optional):
         countries     (list[str]): UI country names, mapped to ISO codes
@@ -70,13 +71,16 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
         "User-Agent": POLITE_USER_AGENT
     }
 
-    items = []
-    page = 1
     per_page = min(max(limit, 25), 200)
+    if offset and page == 1:
+        page = max(1, (int(offset) // per_page) + 1)
+    page = max(1, int(page))
     target_candidates = min(limit * 2, 1000)
+    max_page = page + 5
 
+    items = []
     try:
-        while len(items) < target_candidates and page <= 10:
+        while len(items) < target_candidates and page <= max_page:
             params = {
                 "search":    topic,
                 "filter":    filter_str,
@@ -86,6 +90,10 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
                 "mailto":    RESEARCH_EMAIL,
             }
             resp = requests.get(base_url, params=params, headers=headers, timeout=25)
+            if resp.status_code == 429:
+                log.warning("[OpenAlex] Rate limited (HTTP 429). Backing off 2.5s...")
+                time.sleep(2.5)
+                resp = requests.get(base_url, params=params, headers=headers, timeout=25)
             if resp.status_code != 200:
                 log.error(f"[OpenAlex] API error: HTTP {resp.status_code} — {resp.text[:120]}")
                 break

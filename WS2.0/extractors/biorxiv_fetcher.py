@@ -42,11 +42,12 @@ def _download_pdf_with_retry(url, file_path, retries=1, timeout=10, delay=1):
     return False
 
 
-def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
+def fetch_biorxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwargs):
     """
     Searches and downloads PDFs from bioRxiv AND medRxiv.
     Uses Crossref (with prefix:10.1101) to find relevant preprints by topic,
     then constructs direct PDF links and tries both servers.
+    Supports offset pagination.
 
     filters (dict, optional):
         year_from (int|None): applied as from-pub-date in Crossref filter
@@ -65,10 +66,10 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
 
     records = []
     saved_count = 0
-    offset = 0
-    max_offset = max(2000, limit * 2)
+    offset = max(0, int(offset))
+    max_offset = max(2000, offset + limit * 3)
 
-    log.info(f"[bioRxiv/medRxiv] Searching for: '{topic}' (targeting {limit} papers)...")
+    log.info(f"[bioRxiv/medRxiv] Searching for: '{topic}' (start offset={offset}, targeting {limit} papers)...")
     log.info(f"[bioRxiv/medRxiv] Crossref filter: {crossref_filter!r}")
 
     while saved_count < limit and offset < max_offset:

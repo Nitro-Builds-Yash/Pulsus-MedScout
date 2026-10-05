@@ -26,9 +26,10 @@ _COUNTRY_NAMES = {
 }
 
 
-def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
+def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offset=0, **kwargs):
     """
     Searches and downloads Open Access PDFs exclusively from Europe PMC.
+    Supports page and offset pagination.
 
     filters (dict, optional):
         countries     (list[str]): UI country names → added as COUNTRY: clauses
@@ -37,6 +38,9 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
         article_types (list[str]): not supported by EuropePMC query — ignored
     """
     filters = filters or {}
+    if offset and page == 1:
+        page = max(1, (int(offset) // max(1, limit)) + 1)
+    page = max(1, int(page))
 
     # --- Build EuropePMC query ---
     query_parts = [f'"{topic}"', "HAS_PDF:y", "OPEN_ACCESS:y"]
@@ -59,13 +63,14 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
         query_parts.append(f"({country_clause})")
 
     query = " AND ".join(query_parts)
-    log.info(f"[EuropePMC] Query: {query!r}")
+    log.info(f"[EuropePMC] Query: {query!r} (page={page})")
 
     base_url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
     params = {
         "query":      query,
         "format":     "json",
-        "pageSize":   min(max(limit * 2, 25), 1000),
+        "pageSize":   min(max(limit * 2, 50), 1000),
+        "page":       page,
         "resultType": "core",
     }
 
