@@ -5,13 +5,13 @@
 
 :root {
   --navy: #000000;
-  --ink: #60A5FA;
-  --muted: #3B82F6;
+  --ink: #D4D4D4;
+  --muted: #737373;
   --line: rgba(225, 29, 72, 0.25);
   --line-subtle: rgba(225, 29, 72, 0.1);
-  --page: #040814;
-  --panel-bg: #090F1A;
-  --panel-elevated: #111827;
+  --page: #000000;
+  --panel-bg: #0A0A0A;
+  --panel-elevated: #141414;
   --maroon: #E11D48;
   --maroon-deep: #BE123C;
   --maroon-light: #F43F5E;
@@ -19,8 +19,8 @@
   --accent-bright: #F43F5E;
   --accent-deep: #BE123C;
   --accent-glow: rgba(225, 29, 72, 0.25);
-  --blue: #1D4ED8;
-  --blue-dark: #0F172A;
+  --blue: #000000;
+  --blue-dark: #000000;
   --white: #000000;
   --ruby-glow: rgba(225, 29, 72, 0.25);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
@@ -36,11 +36,9 @@ body {
   margin: 0;
   background-color: var(--page);
   background-image: 
-    radial-gradient(circle at top right, #0F172A, transparent 50%),
-    radial-gradient(circle at bottom left, #0F172A, transparent 50%),
     linear-gradient(to right, rgba(225, 29, 72, 0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(225, 29, 72, 0.08) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 38px 38px, 38px 38px;
+  background-size: 38px 38px, 38px 38px;
   background-attachment: fixed;
   font-size: 14px;
   line-height: 1.5;
