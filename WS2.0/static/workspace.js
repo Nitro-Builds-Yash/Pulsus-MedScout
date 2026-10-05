@@ -211,8 +211,10 @@ form.addEventListener('submit', async event => {
   if (!$('topic').value.trim()) { $('topic').focus(); return; }
   if ($('yearFrom').value && $('yearTo').value && Number($('yearFrom').value) > Number($('yearTo').value)) { message('The start year must be before the end year.'); $('yearFrom').focus(); return; }
   const data = new FormData(form), countries = checkedValues('countries');
-  $('searchContext').textContent = `${$('topic').value.trim()} / ${countries.join(', ') || 'Worldwide'} / Up to ${$('maxPapers').value} contacts`;
-  $('searchContext').hidden = false;
+  if ($('searchContext')) {
+    $('searchContext').textContent = `${$('topic').value.trim()} / ${countries.join(', ') || 'Worldwide'} / Up to ${$('maxPapers').value} contacts`;
+    $('searchContext').hidden = false;
+  }
   records = []; $('resultSearch').value = ''; $('resultCount').textContent = '0'; $('navCount').textContent = '0'; $('visibleCount').textContent = '';
   $('resultTools').hidden = true; $('tableWrap').hidden = true; $('emptyState').hidden = true;
   $('progressBox').hidden = false; $('statusText').textContent = 'Preparing your search…'; $('percentage').textContent = '0%'; $('progressBar').style.width = '0%';
