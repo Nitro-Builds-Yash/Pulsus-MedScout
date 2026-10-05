@@ -1,11 +1,11 @@
 /* ==========================================================================
-   MedScout Research Workspace // Clean White & Vivid Red Enterprise Edition
+   MedScout Research Workspace // Clean Black & Vivid Red Enterprise Edition
    Pulsus Group · Biomedical Literature & Author Intelligence
    ========================================================================== */
 
 :root {
   --navy: #000000;
-  --ink: #D4D4D4;
+  --ink: #737373;
   --muted: #737373;
   --line: rgba(225, 29, 72, 0.25);
   --line-subtle: rgba(225, 29, 72, 0.1);
@@ -21,7 +21,7 @@
   --accent-glow: rgba(225, 29, 72, 0.25);
   --blue: #000000;
   --blue-dark: #000000;
-  --white: #000000;
+  --Black: #000000;
   --ruby-glow: rgba(225, 29, 72, 0.25);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
   color: var(--ink);
@@ -105,7 +105,7 @@ small {
 }
 
 /* --------------------------------------------------------------------------
-   Sidebar (Clean White with Red Highlights & Dark Slate Text)
+   Sidebar (Clean Black with Red Highlights & Dark Slate Text)
    -------------------------------------------------------------------------- */
 .sidebar {
   position: fixed;
@@ -190,7 +190,7 @@ small {
 }
 
 .nav-item:hover {
-  background: #FFF1F2;
+  background: #050505;
   border-color: rgba(225, 29, 72, 0.25);
   color: var(--accent);
 }
@@ -228,7 +228,7 @@ small {
   margin-top: auto;
   margin-bottom: 60px;
   padding: 14px;
-  background: #FFF5F5;
+  background: #050505;
   border: 1px solid rgba(225, 29, 72, 0.22);
   border-radius: 8px;
 }
@@ -486,7 +486,7 @@ h1 em {
 
 .engine-badge.highlight {
   border-color: rgba(225, 29, 72, 0.45);
-  background: #FFF1F2;
+  background: #050505;
   color: var(--maroon);
   font-weight: 700;
 }
@@ -510,7 +510,7 @@ h1 em {
 .badge-dot.gold { background: #D97706; box-shadow: 0 0 6px rgba(217, 119, 6, 0.7); }
 
 /* --------------------------------------------------------------------------
-   Pulsus Enterprise Intelligence Card (White & Red Theme)
+   Pulsus Enterprise Intelligence Card (Black & Red Theme)
    -------------------------------------------------------------------------- */
 .pulsus-enterprise-card {
   min-width: 320px;
@@ -596,7 +596,7 @@ h1 em {
   gap: 10px 14px;
   margin-bottom: 14px;
   padding: 10px 12px;
-  background: #FFF5F5;
+  background: #050505;
   border-radius: 8px;
   border: 1px solid rgba(225, 29, 72, 0.16);
 }
@@ -655,7 +655,7 @@ h1 em {
 }
 
 /* --------------------------------------------------------------------------
-   Search Panel & Form Controls (White & Red Palette)
+   Search Panel & Form Controls (Black & Red Palette)
    -------------------------------------------------------------------------- */
 .search-panel {
   background: var(--panel-bg);
@@ -671,7 +671,7 @@ h1 em {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-bg) 0%, #FFF5F5 100%);
+  background: linear-gradient(180deg, var(--panel-bg) 0%, #050505 100%);
 }
 
 h2 {
@@ -753,7 +753,7 @@ input::placeholder {
 
 .topic-examples button {
   color: var(--accent);
-  background: #FFF1F2;
+  background: #050505;
   border: 1px solid rgba(225, 29, 72, 0.25);
   padding: 4px 9px;
   border-radius: 4px;
@@ -823,7 +823,7 @@ input::placeholder {
   padding: 8px 4px 4px 0;
   margin-top: 4px;
   scrollbar-width: thin;
-  scrollbar-color: var(--accent) #FFF5F5;
+  scrollbar-color: var(--accent) #050505;
 }
 
 .country-option {
@@ -844,7 +844,7 @@ input::placeholder {
 
 .country-option:hover {
   border-color: var(--accent);
-  background: #FFF1F2;
+  background: #050505;
   color: var(--accent);
 }
 
@@ -867,7 +867,7 @@ input::placeholder {
 .selection-summary {
   font-size: 10px;
   color: var(--accent);
-  background: #FFF5F5;
+  background: #050505;
   border: 1px solid rgba(225, 29, 72, 0.25);
   padding: 8px 10px;
   margin-top: 10px;
@@ -931,7 +931,7 @@ input::placeholder {
 
 .year-presets button {
   font-size: 10px;
-  background: #FFF5F5;
+  background: #050505;
   color: var(--accent);
   padding: 4px 8px;
   border: 1px solid rgba(225, 29, 72, 0.25);
@@ -1041,7 +1041,7 @@ details[open] .detail-value:after {
   width: 5px;
 }
 .source-list::-webkit-scrollbar-track {
-  background: #FFF5F5;
+  background: #050505;
   border-radius: 4px;
 }
 .source-list::-webkit-scrollbar-thumb {
@@ -1064,7 +1064,7 @@ details[open] .detail-value:after {
 }
 
 .source-card:hover {
-  background: #FFF5F5;
+  background: #050505;
   border-color: var(--accent);
 }
 
@@ -1117,7 +1117,7 @@ details[open] .detail-value:after {
 }
 
 .source-tag.cat-preprints {
-  background: #FFFBEB;
+  background: #050505;
   color: #D97706;
   border: 1px solid rgba(217, 119, 6, 0.35);
 }
@@ -1212,7 +1212,7 @@ details[open] .detail-value:after {
 }
 
 /* --------------------------------------------------------------------------
-   Results Panel & Output Table (White & Red Theme)
+   Results Panel & Output Table (Black & Red Theme)
    -------------------------------------------------------------------------- */
 .results-panel {
   background: var(--panel-bg);
@@ -1232,7 +1232,7 @@ details[open] .detail-value:after {
   padding: 22px 26px;
   border-bottom: 1px solid var(--line);
   gap: 12px;
-  background: linear-gradient(180deg, var(--panel-bg) 0%, #FFF5F5 100%);
+  background: linear-gradient(180deg, var(--panel-bg) 0%, #050505 100%);
 }
 
 .results-header .eyebrow {
@@ -1300,7 +1300,7 @@ details[open] .detail-value:after {
   height: 188px;
   border: 1px solid rgba(225, 29, 72, 0.25);
   border-radius: 6px;
-  background: #FFF5F5;
+  background: #050505;
 }
 
 .paper.back {
@@ -1468,7 +1468,7 @@ details[open] .detail-value:after {
   font-size: 9.5px;
   color: #64748B;
   margin-top: auto;
-  background: #FFF5F5;
+  background: #050505;
 }
 
 .footer-dot {
@@ -1490,7 +1490,7 @@ details[open] .detail-value:after {
   border-bottom: 1px solid var(--line-subtle);
   font-size: 11.5px;
   color: var(--ink);
-  background: #FFF5F5;
+  background: #050505;
   overflow-wrap: anywhere;
   font-weight: 500;
 }
@@ -1667,7 +1667,7 @@ details[open] .detail-value:after {
 .table-wrap {
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--accent) #FFF5F5;
+  scrollbar-color: var(--accent) #050505;
 }
 
 table {
@@ -1678,7 +1678,7 @@ table {
 }
 
 thead {
-  background: #FFF5F5;
+  background: #050505;
   border-bottom: 1px solid var(--line);
 }
 
