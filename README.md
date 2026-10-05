@@ -20,6 +20,7 @@
 * **🛡️ Zero Gmail Policy & Quality Verification:** Excludes non-institutional domains (`@gmail.com`) to guarantee outreach deliverability to legitimate academic, university, and hospital departments.
 * **🔒 Strict 3-Field Completeness Guarantee:** Enforces an absolute 3-column data contract: **Paper Title**, **Author Name**, and **Email ID**. Any incomplete or missing field is filtered out automatically.
 * **📊 Direct Excel (.xlsx) & CSV Export:** Formatted Excel spreadsheets with auto-styled columns and instant clipboard copy.
+* **🧠 Ephemeral PDF Processing:** PDF bytes are parsed in memory and temporary PDF files are deleted after a task. Set `KEEP_DOWNLOADED_PDFS=1` to retain downloaded PDFs for debugging.
 * **🌍 Geographic Scope & Document Filtering:**
   * **Geographic Scope & Country:** 36+ global countries with live search and "Select All" controls.
   * **Document Classification:** *Research Article*, *Case Reports*, *Brief Reports*, *Systematic Reports*.
@@ -83,8 +84,8 @@ flowchart TD
     
     E --> F["Parallel Multi-Engine Search"]
     F --> G["DOI Normalization & Dedup Engine"]
-    G --> H["PDF Downloader & Cache"]
-    H --> I["pdfplumber Layout Parser"]
+    G --> H["Open PDF Fetch"]
+    H --> I["In-Memory pdfplumber Parser"]
     
     I --> J{"AI Router Available?"}
     J -->|"Yes (Gemini / OpenRouter)"| K["LLM Extractor & Entity Resolver"]
@@ -151,6 +152,8 @@ OPENROUTER_MODEL=google/gemini-2.0-flash-001
 
 If no API keys are provided, Pulsus MedScout runs fully autonomously using its built-in regex and layout heuristic engine.
 
+Downloaded PDFs are processed in memory and removed from the task's temporary source folders by default. To keep them for debugging, set `KEEP_DOWNLOADED_PDFS=1` in the environment before starting the app.
+
 ---
 
 ## 👤 Author & Maintainer
@@ -172,4 +175,3 @@ If no API keys are provided, Pulsus MedScout runs fully autonomously using its b
 ## ⚖️ License
 
 Distributed under the **MIT License**. See `LICENSE` for details.
-

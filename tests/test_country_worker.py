@@ -23,12 +23,14 @@ def worker(monkeypatch, tmp_path):
 
 def pdf_paper(tmp_path, number, email=None, author=None):
     pdf_path = tmp_path / f'{number}.pdf'
-    pdf_path.write_bytes(b'%PDF-1.4 fake test fixture')
+    pdf_bytes = f'%PDF-1.4 fake test fixture {number}'.encode()
+    pdf_path.write_bytes(pdf_bytes)
     author = author or f'Jane Author{number}'
     email = email or f'author{number}@college.edu'
     return {
         'title': f'Cancer research {number}', 'doi': f'10.1000/{number}',
         'authors': [author], 'file_path': str(pdf_path),
+        '_test_pdf_bytes': pdf_bytes,
         '_test_pairs': [(author, email)],
     }
 
@@ -104,7 +106,7 @@ def test_selected_then_unselected_distinct_connectors_fill_exact_count(worker, m
         'openalex': ('OpenAlex', expanded_fetch),
     })
     monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: next(
-        paper['_test_pairs'] for paper in papers if paper['file_path'] == path
+        paper['_test_pairs'] for paper in papers if paper['_test_pdf_bytes'] == path
     ))
     worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 2, {})
     result = worker.TASKS['country-test']['result']
@@ -122,7 +124,7 @@ def test_small_target_uses_small_batch_and_stops_at_target(worker, monkeypatch, 
         'pubmed': ('PubMed', selected_fetch), 'openalex': ('OpenAlex', later_fetch),
     })
     monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: next(
-        paper['_test_pairs'] for paper in papers if paper['file_path'] == path
+        paper['_test_pairs'] for paper in papers if paper['_test_pdf_bytes'] == path
     ))
     worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {})
     result = worker.TASKS['country-test']['result']
@@ -143,6 +145,29 @@ def test_shortfall_after_exhaustion_is_explicit(worker, monkeypatch, tmp_path):
     assert result['total_records'] == 1
     assert result['shortfall'] == 2
     assert 'found 1 of 3' in result['message']
+
+
+def test_short_page_advances_by_requested_window(worker, monkeypatch, tmp_path):
+    first = pdf_paper(tmp_path, 21)
+    second = pdf_paper(tmp_path, 22)
+    calls = []
+
+    def paged_fetcher(*args, **kwargs):
+        calls.append(kwargs)
+        return [first] if len(calls) == 1 else [second]
+
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', paged_fetcher)})
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: next(
+        paper['_test_pairs'] for paper in (first, second) if paper['_test_pdf_bytes'] == path
+    ))
+
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 2, {})
+    result = worker.TASKS['country-test']['result']
+
+    assert result['success']
+    assert len(result['data']) == 2
+    assert calls[0].get('offset', 0) == 0
+    assert calls[1]['offset'] == 5
 
 
 @pytest.mark.parametrize('data', [

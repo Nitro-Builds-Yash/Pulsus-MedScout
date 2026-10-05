@@ -48,6 +48,21 @@ def _download_pdf(url, file_path, timeout=20):
         log.debug(f"[Preprints] PDF download failed from {url}: {e}")
     return False
 
+
+def _openalex_pdf_urls(work):
+    urls = []
+    best_oa = work.get("best_oa_location") or {}
+    if best_oa.get("pdf_url"):
+        urls.append(best_oa["pdf_url"])
+    primary = work.get("primary_location") or {}
+    if primary.get("pdf_url") and primary["pdf_url"] not in urls:
+        urls.append(primary["pdf_url"])
+    for location in work.get("locations", []):
+        pdf_url = location.get("pdf_url")
+        if pdf_url and pdf_url not in urls:
+            urls.append(pdf_url)
+    return urls
+
 def _extract_osf_guid(doi):
     """Extract 5-character OSF GUID from DOI (e.g. 10.31234/osf.io/8cw3h_v2 -> 8cw3h)."""
     if not doi:
@@ -57,7 +72,7 @@ def _extract_osf_guid(doi):
         return m.group(1)
     return None
 
-def fetch_osf_papers(topic, limit=10, target_dir=None, filters=None, specific_prefix=None):
+def fetch_osf_papers(topic, limit=10, target_dir=None, filters=None, specific_prefix=None, offset=0):
     """
     Fetches preprints from the Center for Open Science OSF Preprints network:
     Includes AgriXiv, EarthArXiv, engrXiv, PsyArXiv, SocArXiv, LawArXiv,
@@ -89,7 +104,8 @@ def fetch_osf_papers(topic, limit=10, target_dir=None, filters=None, specific_pr
     params = {
         "query": topic,
         "filter": crossref_filter,
-        "rows": min(limit * 2, 100),
+        "rows": min(max(1, limit), 100),
+        "offset": max(0, int(offset)),
         "select": "DOI,title,author,published,publisher",
         "mailto": "23r25a6702@mlrit.ac.in"
     }
@@ -137,7 +153,7 @@ def fetch_osf_papers(topic, limit=10, target_dir=None, filters=None, specific_pr
     return records
 
 
-def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
     """
     Fetches preprints from MDPI's Preprints.org platform (DOI prefix 10.20944).
     Uses Europe PMC and Crossref to retrieve preprints and author affiliations.
@@ -162,7 +178,8 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
     params = {
         "query": epmc_query,
         "format": "json",
-        "pageSize": min(limit * 2, 100),
+        "pageSize": min(max(1, limit), 100),
+        "page": max(1, int(offset) // max(1, min(max(1, limit), 100)) + 1),
         "resultType": "core"
     }
 
@@ -220,7 +237,8 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
         params = {
             "query": topic,
             "filter": "type:posted-content,prefix:10.20944",
-            "rows": limit,
+            "rows": min(max(1, limit), 100),
+            "offset": max(0, int(offset)),
             "mailto": "23r25a6702@mlrit.ac.in"
         }
         try:
@@ -246,7 +264,7 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
     return records
 
 
-def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
     """
     Fetches chemistry preprints from ChemRxiv (ACS, RSC, GDCh, CCS, CSJ).
     Uses Crossref prefix 10.26434 and OpenAlex source S4393918830.
@@ -260,7 +278,8 @@ def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
     params = {
         "search": topic,
         "filter": "primary_location.source.id:https://openalex.org/S4393918830",
-        "per-page": min(limit * 2, 50),
+        "per-page": min(max(1, limit), 50),
+        "page": max(1, int(offset) // max(1, min(max(1, limit), 50)) + 1),
         "mailto": "23r25a6702@mlrit.ac.in"
     }
 
@@ -316,7 +335,8 @@ def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
         params = {
             "query": topic,
             "filter": "type:posted-content,prefix:10.26434",
-            "rows": limit - len(records),
+            "rows": min(max(1, limit - len(records)), 100),
+            "offset": max(0, int(offset)),
             "mailto": "23r25a6702@mlrit.ac.in"
         }
         try:
@@ -329,20 +349,31 @@ def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
                         f"{a.get('given', '')} {a.get('family', '')}".strip() or a.get("family", "Author")
                         for a in it.get("author", [])
                     ]
-                    records.append({
+                    record = {
                         "title": title,
                         "authors": authors,
                         "doi": f"https://doi.org/{doi}" if doi else "",
                         "source_journal": "ChemRxiv",
                         "emails": []
-                    })
+                    }
+                    pdf_urls = [
+                        link.get("URL") for link in it.get("link", [])
+                        if "pdf" in (link.get("content-type") or "").lower()
+                        or (link.get("URL") or "").lower().endswith(".pdf")
+                    ]
+                    if target_dir:
+                        pdf_path = os.path.join(target_dir, f"chemrxiv_crossref_{len(records) + 1}.pdf")
+                        if _download_first_pdf(pdf_urls, pdf_path):
+                            record["file_path"] = pdf_path
+                            record["pdf_name"] = os.path.basename(pdf_path)
+                    records.append(record)
         except Exception as e:
             log.error(f"[ChemRxiv] Crossref fallback error: {e}")
 
     return records
 
 
-def fetch_ssrn_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_ssrn_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
     """
     Fetches preprints and working papers from SSRN (Social Science Research Network).
     Uses Crossref prefix 10.2139 and OpenAlex SSRN source S4210172589.
@@ -355,7 +386,8 @@ def fetch_ssrn_papers(topic, limit=10, target_dir=None, filters=None):
     params = {
         "search": topic,
         "filter": "primary_location.source.id:https://openalex.org/S4210172589",
-        "per-page": min(limit * 2, 50),
+        "per-page": min(max(1, limit), 50),
+        "page": max(1, int(offset) // max(1, min(max(1, limit), 50)) + 1),
         "mailto": "23r25a6702@mlrit.ac.in"
     }
 
@@ -377,20 +409,26 @@ def fetch_ssrn_papers(topic, limit=10, target_dir=None, filters=None):
                             if c not in emails:
                                 emails.append(c)
 
-                records.append({
+                record = {
                     "title": title,
                     "authors": authors,
                     "doi": doi,
                     "source_journal": "SSRN",
                     "emails": emails
-                })
+                }
+                if target_dir:
+                    pdf_path = os.path.join(target_dir, f"ssrn_{len(records) + 1}.pdf")
+                    if _download_first_pdf(_openalex_pdf_urls(it), pdf_path):
+                        record["file_path"] = pdf_path
+                        record["pdf_name"] = os.path.basename(pdf_path)
+                records.append(record)
     except Exception as e:
         log.error(f"[SSRN] OpenAlex error: {e}")
 
     return records
 
 
-def fetch_scielo_preprints_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_scielo_preprints_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
     """
     Fetches preprints from SciELO Preprints (Latin America & Global Open Science).
     Uses Crossref prefix 10.1590 and SciELO preprints repository.
@@ -403,7 +441,8 @@ def fetch_scielo_preprints_papers(topic, limit=10, target_dir=None, filters=None
     params = {
         "query": topic,
         "filter": "type:posted-content,prefix:10.1590",
-        "rows": limit,
+        "rows": min(max(1, limit), 100),
+        "offset": max(0, int(offset)),
         "mailto": "23r25a6702@mlrit.ac.in"
     }
     try:
@@ -416,20 +455,31 @@ def fetch_scielo_preprints_papers(topic, limit=10, target_dir=None, filters=None
                     f"{a.get('given', '')} {a.get('family', '')}".strip() or a.get("family", "Author")
                     for a in it.get("author", [])
                 ]
-                records.append({
+                record = {
                     "title": title,
                     "authors": authors,
                     "doi": f"https://doi.org/{doi}" if doi else "",
                     "source_journal": "SciELO Preprints",
                     "emails": []
-                })
+                }
+                pdf_urls = [
+                    link.get("URL") for link in it.get("link", [])
+                    if "pdf" in (link.get("content-type") or "").lower()
+                    or (link.get("URL") or "").lower().endswith(".pdf")
+                ]
+                if target_dir:
+                    pdf_path = os.path.join(target_dir, f"scielo_preprint_{len(records) + 1}.pdf")
+                    if _download_first_pdf(pdf_urls, pdf_path):
+                        record["file_path"] = pdf_path
+                        record["pdf_name"] = os.path.basename(pdf_path)
+                records.append(record)
     except Exception as e:
         log.error(f"[SciELO Preprints] error: {e}")
 
     return records
 
 
-def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
     """
     Fetches economics research preprints and working papers from RePEc (Research Papers in Economics).
     Uses OpenAlex RePEc source S4306401271.
@@ -442,7 +492,8 @@ def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None):
     params = {
         "search": topic,
         "filter": "primary_location.source.id:https://openalex.org/S4306401271",
-        "per-page": min(limit * 2, 50),
+        "per-page": min(max(1, limit), 50),
+        "page": max(1, int(offset) // max(1, min(max(1, limit), 50)) + 1),
         "mailto": "23r25a6702@mlrit.ac.in"
     }
 
@@ -464,13 +515,19 @@ def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None):
                             if c not in emails:
                                 emails.append(c)
 
-                records.append({
+                record = {
                     "title": title,
                     "authors": authors,
                     "doi": doi,
                     "source_journal": "RePEc",
                     "emails": emails
-                })
+                }
+                if target_dir:
+                    pdf_path = os.path.join(target_dir, f"repec_{len(records) + 1}.pdf")
+                    if _download_first_pdf(_openalex_pdf_urls(it), pdf_path):
+                        record["file_path"] = pdf_path
+                        record["pdf_name"] = os.path.basename(pdf_path)
+                records.append(record)
     except Exception as e:
         log.error(f"[RePEc] error: {e}")
 

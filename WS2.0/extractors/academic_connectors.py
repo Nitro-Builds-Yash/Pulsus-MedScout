@@ -2,7 +2,6 @@ import os
 import re
 import time
 import logging
-import requests
 from typing import List, Dict, Any, Optional
 from .http_client import get_with_backoff, polite_jitter, POLITE_USER_AGENT
 from .country_filter import eligible_authors, contact_allowed, resolve_email_author
@@ -11,23 +10,19 @@ log = logging.getLogger("extraction.academic_connectors")
 
 EMAIL_RE = re.compile(r'[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}')
 
-STEALTH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9"
-}
-
 API_HEADERS = {
     "User-Agent": POLITE_USER_AGENT,
     "Accept": "application/json"
 }
 
 def _download_pdf_safely(url: str, file_path: str, timeout: int = 25) -> bool:
-    """Download PDF safely with anti-bot delay."""
+    """Download a public PDF with a declared user agent and polite pacing."""
     try:
-        polite_jitter(0.6, 1.2)
-        resp = requests.get(url, headers=STEALTH_HEADERS, timeout=timeout, allow_redirects=True)
-        if resp.status_code == 200 and (resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]):
+        resp = get_with_backoff(url, headers={
+            **API_HEADERS,
+            "Accept": "application/pdf,application/xhtml+xml,text/html;q=0.9,*/*;q=0.8",
+        }, timeout=timeout)
+        if resp and resp.status_code == 200 and (resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]):
             with open(file_path, "wb") as f:
                 f.write(resp.content)
             return True
@@ -47,7 +42,7 @@ def _search_openalex_lineage(
 ) -> List[Dict[str, Any]]:
     """
     Search OpenAlex works filtered by source/publisher lineage with full open access email resolution.
-    Applies polite jitter for stealth requests.
+    Uses a declared User-Agent and rate-limit-aware request pacing.
     """
     filters = filters or {}
     records = []
@@ -78,7 +73,7 @@ def _search_openalex_lineage(
         page_num = max(1, int(offset // params["per-page"]) + 1)
         params["page"] = page_num
 
-    polite_jitter(0.5, 1.0)
+    polite_jitter()
     try:
         resp = get_with_backoff(base_url, params=params, headers=API_HEADERS, timeout=25)
         if resp is None or resp.status_code != 200:
@@ -152,10 +147,10 @@ def _search_openalex_lineage(
 
 def fetch_microsoft_academic_papers(topic, limit, target_dir, filters=None, offset=0):
     """
-    Microsoft Academic Graph legacy publications via OpenAlex (OpenAlex inherits MAG).
-    Searches worldwide cross-disciplinary open publications with anti-bot delay.
+    Search the surviving OpenAlex lineage associated with legacy Microsoft Academic.
+    Microsoft Academic itself was retired; only open PDFs are returned by this route.
     """
-    polite_jitter(0.6, 1.2)
+    polite_jitter()
     return _search_openalex_lineage(
         topic=topic,
         lineage_id="S4306400123", # OpenAlex / Microsoft Academic lineage index
@@ -169,12 +164,11 @@ def fetch_microsoft_academic_papers(topic, limit, target_dir, filters=None, offs
 
 def fetch_cochrane_papers(topic, limit, target_dir, filters=None, offset=0):
     """
-    Searches Cochrane Library open systematic reviews and clinical trials (prefix 10.1002/14651858).
-    Uses Crossref and EuropePMC with anti-bot jitter.
+    Search Crossref metadata and return only Cochrane reviews with a downloadable PDF.
     """
     filters = filters or {}
     records = []
-    polite_jitter(0.7, 1.3)
+    polite_jitter()
     url = "https://api.crossref.org/works"
     params = {
         "query": f"{topic} Cochrane Database of Systematic Reviews",
@@ -192,18 +186,33 @@ def fetch_cochrane_papers(topic, limit, target_dir, filters=None, offset=0):
                 if len(records) >= limit:
                     break
                 doi = it.get("DOI", "")
+                if "10.1002/14651858" not in doi.lower():
+                    continue
                 title = (it.get("title") or ["Untitled Cochrane Review"])[0]
                 authors = [
                     f"{a.get('given', '')} {a.get('family', '')}".strip() or a.get("family", "Author")
                     for a in it.get("author", [])
                 ]
-                records.append({
+                record = {
                     "title": title,
                     "authors": authors,
                     "doi": f"https://doi.org/{doi}" if doi else "",
                     "source_journal": "Cochrane Library",
                     "emails": []
-                })
+                }
+                if target_dir:
+                    links = [
+                        link.get("URL") for link in it.get("link", [])
+                        if "pdf" in (link.get("content-type") or "").lower()
+                        or (link.get("URL") or "").lower().endswith(".pdf")
+                    ]
+                    pdf_path = os.path.join(target_dir, f"cochrane_{len(records) + 1}.pdf")
+                    for pdf_url in links:
+                        if _download_pdf_safely(pdf_url, pdf_path):
+                            record["file_path"] = pdf_path
+                            record["pdf_name"] = os.path.basename(pdf_path)
+                            break
+                records.append(record)
     except Exception as e:
         log.warning(f"[Cochrane] Search error: {e}")
 
@@ -213,13 +222,29 @@ def fetch_cochrane_papers(topic, limit, target_dir, filters=None, offset=0):
 def fetch_hubmed_papers(topic, limit, target_dir, filters=None, offset=0):
     """
     Searches HubMed / PubMed alternative interface using Entrez E-Utilities.
-    Includes anti-bot delay to prevent rate limit blocks.
+    Uses PubMed metadata and resolves only downloadable open-access PDFs.
     """
     from .pubmed_fetcher import fetch_pubmed_papers
-    polite_jitter(0.6, 1.2)
-    results = fetch_pubmed_papers(topic, limit, target_dir, filters)
-    for r in results:
-        r["source_journal"] = "HubMed (PubMed Engine)"
+    from .crossref_fetcher import _batch_resolve_pdf_urls, _download_pdf
+    results = fetch_pubmed_papers(topic, limit, target_dir, filters, offset=offset)
+    doi_values = [
+        (record.get("doi") or "").replace("https://doi.org/", "").strip()
+        for record in results
+    ]
+    doi_to_urls = _batch_resolve_pdf_urls([doi for doi in doi_values if doi])
+    for index, record in enumerate(results, 1):
+        doi = (record.get("doi") or "").replace("https://doi.org/", "").strip().lower()
+        record["source_journal"] = "HubMed / PubMed"
+        if not doi or not target_dir:
+            continue
+        path = os.path.join(target_dir, f"hubmed_{index}.pdf")
+        for pdf_url in doi_to_urls.get(doi, []):
+            if _download_pdf(pdf_url, path):
+                record["file_path"] = path
+                record["pdf_name"] = os.path.basename(path)
+                break
+    # Keep metadata-only candidates in the returned page so the worker advances
+    # the PubMed cursor even when that page has no downloadable open PDFs.
     return results
 
 
@@ -227,7 +252,7 @@ def fetch_thelancet_papers(topic, limit, target_dir, filters=None, offset=0):
     """
     Searches The Lancet Preprints & Open Access via SSRN & Crossref (Elsevier Lancet mirror).
     """
-    polite_jitter(0.6, 1.2)
+    polite_jitter()
     return _search_openalex_lineage(
         topic=f"{topic} Lancet",
         lineage_id="S4210172589", # SSRN / Lancet preprints host
@@ -242,12 +267,12 @@ def fetch_thelancet_papers(topic, limit, target_dir, filters=None, offset=0):
 def fetch_f1000research_papers(topic, limit, target_dir, filters=None, offset=0):
     """
     Dedicated fetcher for F1000Research open-access post-publication peer-reviewed articles.
-    Routes through EuropePMC and Crossref with randomized anti-bot jitter.
+    Routes through EuropePMC, returning public PDFs only.
     """
     from .europepmc_fetcher import fetch_europepmc_papers
-    polite_jitter(0.8, 1.4)
+    polite_jitter()
     enhanced_topic = f'({topic}) AND (PUBLISHER:"F1000 Research Limited" OR JOURNAL:"F1000Research")'
-    results = fetch_europepmc_papers(enhanced_topic, limit, target_dir, filters)
+    results = fetch_europepmc_papers(enhanced_topic, limit, target_dir, filters, offset=offset)
     for r in results:
         r["source_journal"] = "F1000Research"
     return results

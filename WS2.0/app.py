@@ -1,10 +1,12 @@
 import os
+import io
 import re
 import math
 import time
 import uuid
 import threading
 import logging
+from functools import partial
 from logging.handlers import RotatingFileHandler
 import pdfplumber
 import pandas as pd
@@ -28,6 +30,12 @@ from extractors.pubmed_fetcher import fetch_pubmed_papers
 from extractors.semanticscholar_fetcher import fetch_semanticscholar_papers
 from extractors.preprints_fetcher import (
     fetch_all_preprints_papers,
+    fetch_osf_papers,
+    fetch_preprints_org_papers,
+    fetch_chemrxiv_papers,
+    fetch_ssrn_papers,
+    fetch_scielo_preprints_papers,
+    fetch_repec_papers,
     fetch_eric_papers,
     fetch_essoar_papers,
 )
@@ -446,10 +454,11 @@ def extract_full_names_from_pdf(text):
     return list(dict.fromkeys(candidate_names))
 
 
-def extract_author_email_pairs(file_path, metadata_authors):
+def extract_author_email_pairs(pdf_source, metadata_authors):
     mapped_pairs = []
     try:
-        with pdfplumber.open(file_path) as pdf:
+        pdf_input = io.BytesIO(pdf_source) if isinstance(pdf_source, (bytes, bytearray)) else pdf_source
+        with pdfplumber.open(pdf_input) as pdf:
             if len(pdf.pages) == 0:
                 return mapped_pairs
 
@@ -519,7 +528,7 @@ def extract_author_email_pairs(file_path, metadata_authors):
                     mapped_pairs.append((matched_author, clean_email))
 
     except Exception as e:
-        log.error(f"Error parsing PDF ({file_path}): {e}", exc_info=True)
+        log.error(f"Error parsing PDF source: {e}", exc_info=True)
     return mapped_pairs
 
 
@@ -548,39 +557,39 @@ SOURCE_FETCHERS = {
     "semanticscholar": ("Semantic Scholar",         fetch_semanticscholar_papers),
     "crossref":        ("Crossref",                  fetch_crossref_papers),
     "elife":           ("eLife",                     fetch_elife_papers),
-    "preprints":       ("Preprints.org",             fetch_all_preprints_papers),
+    "preprints":       ("Preprints.org",             fetch_preprints_org_papers),
     "sciencedirect":   ("ScienceDirect",             fetch_sciencedirect_papers),
     "imedpub":         ("iMedPub Group",             fetch_imedpub_papers),
     # Preprint Servers
-    "osf":             ("OSF Preprints",             fetch_all_preprints_papers),
-    "chemrxiv":        ("ChemRxiv",                  fetch_all_preprints_papers),
+    "osf":             ("OSF Preprints",             fetch_osf_papers),
+    "chemrxiv":        ("ChemRxiv",                  fetch_chemrxiv_papers),
     "zenodo":          ("Zenodo",                    fetch_all_preprints_papers),
-    "ssrn":            ("SSRN",                      fetch_all_preprints_papers),
-    "eartharxiv":      ("EarthArXiv",                fetch_all_preprints_papers),
+    "ssrn":            ("SSRN (open PDFs)",          fetch_ssrn_papers),
+    "eartharxiv":      ("EarthArXiv",                partial(fetch_osf_papers, specific_prefix="10.31223")),
     "essoar":          ("ESS Open Archive / ESSOAr", fetch_essoar_papers),
     "essopenarchive":  ("ESS Open Archive",          fetch_essoar_papers),
     "eric":            ("ERIC (full-text PDFs)",      fetch_eric_papers),
     # These OSF/community servers and open indexes are queried through one
     # shared connector to avoid repeating the same underlying search.
-    "agrirxiv":        ("AgriXiv (OSF network)",      fetch_all_preprints_papers),
-    "crimrxiv":        ("CrimRxiv (open indexes)",    fetch_all_preprints_papers),
-    "engrxiv":         ("engrXiv (OSF network)",      fetch_all_preprints_papers),
-    "focusarchive":    ("FocUS Archive (OSF)",        fetch_all_preprints_papers),
-    "lawarxiv":        ("Law Archive (OSF)",          fetch_all_preprints_papers),
-    "nutrixiv":        ("NutriXiv (OSF network)",     fetch_all_preprints_papers),
-    "psyarxiv":        ("PsyArXiv (OSF)",             fetch_all_preprints_papers),
-    "socarxiv":        ("SocArXiv (OSF)",             fetch_all_preprints_papers),
-    "sportrxiv":       ("SportRxiv (OSF network)",    fetch_all_preprints_papers),
-    "scielopreprints": ("SciELO Preprints",           fetch_all_preprints_papers),
-    "repec":           ("RePEc (open indexes)",       fetch_all_preprints_papers),
-    "peerjpreprints":  ("PeerJ Preprints (OpenAlex)",  fetch_openalex_papers),
+    "agrirxiv":        ("AgriXiv (open preprint index)", fetch_openalex_papers),
+    "crimrxiv":        ("CrimRxiv (open index)",      fetch_openalex_papers),
+    "engrxiv":         ("engrXiv (OSF DOI collection)", partial(fetch_osf_papers, specific_prefix="10.31224")),
+    "focusarchive":    ("FocUS Archive (OSF)",        fetch_osf_papers),
+    "lawarxiv":        ("Law Archive (OSF DOI collection)", partial(fetch_osf_papers, specific_prefix="10.31228")),
+    "nutrixiv":        ("NutriXiv (OSF DOI collection)", partial(fetch_osf_papers, specific_prefix="10.31220")),
+    "psyarxiv":        ("PsyArXiv (OSF DOI collection)", partial(fetch_osf_papers, specific_prefix="10.31234")),
+    "socarxiv":        ("SocArXiv (OSF DOI collection)", partial(fetch_osf_papers, specific_prefix="10.31235")),
+    "sportrxiv":       ("SportRxiv (OSF DOI collection)", partial(fetch_osf_papers, specific_prefix="10.31236")),
+    "scielopreprints": ("SciELO Preprints",           fetch_scielo_preprints_papers),
+    "repec":           ("RePEc (open index + PDFs)",  fetch_repec_papers),
+    "peerjpreprints":  ("PeerJ Preprints (archive index)", fetch_openalex_papers),
     "riojournal":      ("RIO Journal (Crossref)",     fetch_crossref_papers),
     "elis":            ("E-LIS / RCLIS (OA index)",   fetch_openalex_papers),
     # Biomedical & Clinical Journals
     "peerj":           ("PeerJ",                     fetch_openalex_papers),
     "f1000":           ("F1000Research",             fetch_f1000research_papers),
-    "microsoftacademic": ("Microsoft Academic",       fetch_microsoft_academic_papers),
-    "cochrane":        ("Cochrane Library",          fetch_cochrane_papers),
+    "microsoftresearch": ("Microsoft Research publications (OpenAlex)", fetch_microsoft_academic_papers),
+    "cochrane":        ("Cochrane (open PDF copies only)", fetch_cochrane_papers),
     "hubmed":          ("HubMed",                    fetch_hubmed_papers),
     "lancet":          ("The Lancet Preprints",      fetch_thelancet_papers),
     "frontiers":       ("Frontiers",                 fetch_frontiers_papers),
@@ -672,6 +681,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
     pending_rows = []   # Batch buffer — flushed every 5 papers
     dedup_emails = set()
     dedup_pairs = set()
+    task_pdf_dirs = []
 
     if isinstance(source_sites, str):
         source_sites = [source_sites]
@@ -740,8 +750,39 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         # avoid unnecessary downloads when the requested count is small.
         per_source_max = min(100, max(5, math.ceil(max_papers * 2.5)))
 
+        def _pagination_step(source_key, requested_limit):
+            """Return the result-window size used by offset-based connectors."""
+            if source_key == "microsoftresearch":
+                # Its OpenAlex lineage fetcher requests two rows per desired
+                # result, capped at 50; advance by that same window.
+                return min(max(5, requested_limit * 2), 50)
+            if source_key in {
+                "osf", "preprints", "eartharxiv", "agrirxiv", "engrxiv",
+                "focusarchive", "lawarxiv", "nutrixiv", "psyarxiv", "socarxiv",
+                "sportrxiv", "scielopreprints", "ssrn", "chemrxiv", "repec",
+                "hubmed",
+            }:
+                return min(max(1, requested_limit), 50 if source_key in {"chemrxiv", "ssrn", "repec"} else 100)
+            if source_key == "cochrane":
+                return min(max(1, requested_limit) * 2, 50)
+            if source_key == "europepmc":
+                return min(max(requested_limit * 2, 50), 1000)
+            if source_key in {"openalex", "agrirxiv", "crimrxiv", "peerjpreprints", "elis", "doaj", "base", "core", "scielo", "hal", "peerj"}:
+                return min(max(requested_limit, 25), 200)
+            if source_key in {"crossref", "springer", "tandf", "riojournal"}:
+                return 100
+            if source_key in {"biorxiv", "medrxiv"}:
+                return min(100, max(1, requested_limit) * 2)
+            if source_key == "eric":
+                return min(max(requested_limit, 1) * 3, 200)
+            if source_key in {"essoar", "essopenarchive"}:
+                return min(max(requested_limit, 1) * 2, 100)
+            return requested_limit
+
         source_offsets = {s: 0 for s in source_sites}
         source_exhausted = set()
+        source_empty_pages = {s: 0 for s in source_sites}
+        source_duplicate_pages = {s: 0 for s in source_sites}
         seen_paper_keys = set()
         total_downloaded = 0
         doi_skipped_count = 0
@@ -780,16 +821,32 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             # Count contacts only when the fetcher saved a real PDF. Metadata
             # emails remain useful to fetchers for discovery, never as results.
             file_path = item.get("file_path")
+            pdf_bytes = item.pop("pdf_bytes", None)
+            keep_pdf_files = os.getenv("KEEP_DOWNLOADED_PDFS", "0").strip().lower() in {"1", "true", "yes"}
             is_pdf = False
-            if file_path and os.path.isfile(file_path):
+            if isinstance(pdf_bytes, bytearray):
+                pdf_bytes = bytes(pdf_bytes)
+            if isinstance(pdf_bytes, bytes):
+                is_pdf = pdf_bytes.startswith(b"%PDF-")
+            elif file_path and os.path.isfile(file_path):
                 try:
                     with open(file_path, "rb") as pdf_file:
-                        is_pdf = pdf_file.read(5) == b"%PDF-"
+                        pdf_bytes = pdf_file.read()
+                    is_pdf = pdf_bytes.startswith(b"%PDF-")
                 except OSError:
                     pass
+                finally:
+                    # Fetchers still use path-based download helpers. In the
+                    # default mode, move the bytes into memory and remove the
+                    # temporary artifact before parsing or processing results.
+                    if not keep_pdf_files:
+                        try:
+                            os.remove(file_path)
+                        except OSError:
+                            pass
             if is_pdf:
                 pdfs_downloaded += 1
-                pairs = extract_author_email_pairs(item["file_path"], item.get("authors", []))
+                pairs = extract_author_email_pairs(pdf_bytes, item.get("authors", []))
                 pdfs_parsed += 1
                 for author, email in pairs:
                     clean_email = clean_and_validate_email(email)
@@ -819,8 +876,10 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         def _fetch_single_source(src_tuple):
             s_idx, s_key = src_tuple
             s_label, s_func = SOURCE_FETCHERS[s_key]
-            t_dir = os.path.join(PDFS_BASE_DIR, f"{s_key}_{topic_clean}_pdfs")
+            t_dir = os.path.join(PDFS_BASE_DIR, f"{s_key}_{topic_clean}_{short_id}_pdfs")
             os.makedirs(t_dir, exist_ok=True)
+            if t_dir not in task_pdf_dirs:
+                task_pdf_dirs.append(t_dir)
             for attempt in range(3):
                 try:
                     res = s_func(topic, per_source_max, t_dir, filters=filters)
@@ -853,9 +912,16 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     log.error(f"[Task {short_id}] Source failed: {ex}")
                     downloaded = []
 
-                source_offsets[source_key] = len(downloaded)
-                if len(downloaded) < per_source_max:
-                    source_exhausted.add(source_key)
+                # Offsets count the requested result window, not only PDFs that
+                # survived filtering/download. Keep the cursor stable so a later
+                # page doesn't overlap the initial request when few PDFs qualify.
+                source_offsets[source_key] = _pagination_step(source_key, per_source_max)
+                if downloaded:
+                    source_empty_pages[source_key] = 0
+                else:
+                    source_empty_pages[source_key] += 1
+                    if source_empty_pages[source_key] >= 3:
+                        source_exhausted.add(source_key)
                 completed_sources += 1
                 total_downloaded += len(downloaded)
 
@@ -923,10 +989,14 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         contacts_found=len(rows)
                     )
 
-                    # Dynamic batch quota: request proportional to shortfall
-                    top_quota = min(100, max(5, math.ceil(needed * 2)))
+                    # Keep page size constant: connector offsets are based on
+                    # requested records, and changing limit can repeat or skip pages.
+                    top_quota = per_source_max
                     current_offset = source_offsets.get(top_key, 0)
-                    topic_pdf_dir = os.path.join(PDFS_BASE_DIR, f"{top_key}_{topic_clean}_pdfs")
+                    topic_pdf_dir = os.path.join(PDFS_BASE_DIR, f"{top_key}_{topic_clean}_{short_id}_pdfs")
+                    os.makedirs(topic_pdf_dir, exist_ok=True)
+                    if topic_pdf_dir not in task_pdf_dirs:
+                        task_pdf_dirs.append(topic_pdf_dir)
 
                     extra_downloaded = []
                     for attempt in range(3):
@@ -948,10 +1018,13 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                             else:
                                 time.sleep(2 ** attempt)
 
-                    source_offsets[top_key] = current_offset + len(extra_downloaded)
-
-                    if len(extra_downloaded) < top_quota:
-                        exhausted_sources.add(top_key)
+                    source_offsets[top_key] = current_offset + _pagination_step(top_key, top_quota)
+                    if extra_downloaded:
+                        source_empty_pages[top_key] = 0
+                    else:
+                        source_empty_pages[top_key] = source_empty_pages.get(top_key, 0) + 1
+                        if source_empty_pages[top_key] >= 3:
+                            exhausted_sources.add(top_key)
                     if not extra_downloaded:
                         continue
 
@@ -969,7 +1042,11 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         pdfs_parsed=pdfs_parsed, sources_remaining=n_sources - len(exhausted_sources),
                     )
                     if len(seen_paper_keys) == prior_seen_papers:
-                        exhausted_sources.add(top_key)
+                        source_duplicate_pages[top_key] = source_duplicate_pages.get(top_key, 0) + 1
+                        if source_duplicate_pages[top_key] >= 3:
+                            exhausted_sources.add(top_key)
+                    else:
+                        source_duplicate_pages[top_key] = 0
                     if len(rows) >= max_papers:
                         log.info(f"[Task {short_id}] Target of {max_papers} verified contacts achieved during top-up!")
                         break
@@ -1064,6 +1141,18 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             "file": None,
         }, percentage=100, contacts_found=len(rows))
     finally:
+        if os.getenv("KEEP_DOWNLOADED_PDFS", "0").strip().lower() not in {"1", "true", "yes"}:
+            for pdf_dir in task_pdf_dirs:
+                try:
+                    for filename in os.listdir(pdf_dir):
+                        if filename.lower().endswith(".pdf"):
+                            try:
+                                os.remove(os.path.join(pdf_dir, filename))
+                            except OSError:
+                                pass
+                    os.rmdir(pdf_dir)
+                except OSError:
+                    pass
         _release_extraction_lock()
         _cleanup_stale_tasks()
 
