@@ -3,14 +3,15 @@ import re
 import time
 import logging
 import requests
-from .http_client import http_session, POLITE_USER_AGENT, polite_jitter
+from .http_client import http_session, POLITE_USER_AGENT, polite_jitter, get_with_backoff
+from .openalex_fetcher import fetch_openalex_papers
 
 log = logging.getLogger("extraction.preprints")
 
 EMAIL_RE = re.compile(r'[a-zA-Z0-9_.+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}')
 
-STEALTH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+REPOSITORY_HEADERS = {
+    "User-Agent": POLITE_USER_AGENT,
     "Accept": "application/pdf,application/xhtml+xml,text/html,application/xml;q=0.9,*/*;q=0.8"
 }
 
@@ -37,7 +38,8 @@ OSF_PREFIXES = [
 def _download_pdf(url, file_path, timeout=20):
     """Download PDF file safely."""
     try:
-        resp = requests.get(url, headers=STEALTH_HEADERS, timeout=timeout, allow_redirects=True)
+        polite_jitter()
+        resp = get_with_backoff(url, headers=REPOSITORY_HEADERS, timeout=timeout)
         if resp.status_code == 200 and (resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]):
             with open(file_path, "wb") as f:
                 f.write(resp.content)
@@ -93,7 +95,7 @@ def fetch_osf_papers(topic, limit=10, target_dir=None, filters=None, specific_pr
     }
 
     try:
-        resp = requests.get(url, params=params, headers=API_HEADERS, timeout=20)
+        resp = get_with_backoff(url, params=params, headers=API_HEADERS, timeout=20)
         if resp.status_code == 200:
             items = resp.json().get("message", {}).get("items", [])
             for it in items:
@@ -165,7 +167,7 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
     }
 
     try:
-        resp = requests.get(epmc_url, params=params, headers=API_HEADERS, timeout=25)
+        resp = get_with_backoff(epmc_url, params=params, headers=API_HEADERS, timeout=25)
         if resp.status_code == 200:
             results = resp.json().get("resultList", {}).get("result", [])
             for it in results:
@@ -175,6 +177,17 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
                 doi = it.get("doi", "")
                 authors_str = it.get("authorString", "")
                 authors = [a.strip() for a in authors_str.split(",") if a.strip()]
+
+                pdf_urls = [
+                    full_text.get("url")
+                    for full_text in it.get("fullTextUrlList", {}).get("fullTextUrl", [])
+                    if full_text.get("documentStyle") == "pdf" and full_text.get("url")
+                ]
+                file_path = None
+                if target_dir and pdf_urls:
+                    candidate_path = os.path.join(target_dir, f"preprints_org_{len(records) + 1}.pdf")
+                    if _download_first_pdf(pdf_urls, candidate_path):
+                        file_path = candidate_path
 
                 # Pre-extract author emails from affiliations
                 emails = []
@@ -186,13 +199,17 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
                             if c not in emails:
                                 emails.append(c)
 
-                records.append({
+                record = {
                     "title": title,
                     "authors": authors,
                     "doi": f"https://doi.org/{doi}" if doi and not doi.startswith("http") else doi,
                     "source_journal": "Preprints.org",
                     "emails": emails
-                })
+                }
+                if file_path:
+                    record["file_path"] = file_path
+                    record["pdf_name"] = os.path.basename(file_path)
+                records.append(record)
     except Exception as e:
         log.error(f"[Preprints.org] Error querying EuropePMC: {e}")
 
@@ -207,7 +224,7 @@ def fetch_preprints_org_papers(topic, limit=10, target_dir=None, filters=None):
             "mailto": "23r25a6702@mlrit.ac.in"
         }
         try:
-            resp = requests.get(crossref_url, params=params, headers=API_HEADERS, timeout=20)
+            resp = get_with_backoff(crossref_url, params=params, headers=API_HEADERS, timeout=20)
             if resp.status_code == 200:
                 for it in resp.json().get("message", {}).get("items", []):
                     title = (it.get("title") or ["Untitled"])[0]
@@ -248,7 +265,7 @@ def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
     }
 
     try:
-        resp = requests.get(oa_url, params=params, headers=API_HEADERS, timeout=20)
+        resp = get_with_backoff(oa_url, params=params, headers=API_HEADERS, timeout=20)
         if resp.status_code == 200:
             for it in resp.json().get("results", []):
                 if len(records) >= limit:
@@ -303,7 +320,7 @@ def fetch_chemrxiv_papers(topic, limit=10, target_dir=None, filters=None):
             "mailto": "23r25a6702@mlrit.ac.in"
         }
         try:
-            resp = requests.get(crossref_url, params=params, headers=API_HEADERS, timeout=20)
+            resp = get_with_backoff(crossref_url, params=params, headers=API_HEADERS, timeout=20)
             if resp.status_code == 200:
                 for it in resp.json().get("message", {}).get("items", []):
                     title = (it.get("title") or ["Untitled"])[0]
@@ -343,7 +360,7 @@ def fetch_ssrn_papers(topic, limit=10, target_dir=None, filters=None):
     }
 
     try:
-        resp = requests.get(oa_url, params=params, headers=API_HEADERS, timeout=20)
+        resp = get_with_backoff(oa_url, params=params, headers=API_HEADERS, timeout=20)
         if resp.status_code == 200:
             for it in resp.json().get("results", []):
                 if len(records) >= limit:
@@ -390,7 +407,7 @@ def fetch_scielo_preprints_papers(topic, limit=10, target_dir=None, filters=None
         "mailto": "23r25a6702@mlrit.ac.in"
     }
     try:
-        resp = requests.get(crossref_url, params=params, headers=API_HEADERS, timeout=20)
+        resp = get_with_backoff(crossref_url, params=params, headers=API_HEADERS, timeout=20)
         if resp.status_code == 200:
             for it in resp.json().get("message", {}).get("items", []):
                 title = (it.get("title") or ["Untitled"])[0]
@@ -430,7 +447,7 @@ def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None):
     }
 
     try:
-        resp = requests.get(oa_url, params=params, headers=API_HEADERS, timeout=20)
+        resp = get_with_backoff(oa_url, params=params, headers=API_HEADERS, timeout=20)
         if resp.status_code == 200:
             for it in resp.json().get("results", []):
                 if len(records) >= limit:
@@ -460,77 +477,158 @@ def fetch_repec_papers(topic, limit=10, target_dir=None, filters=None):
     return records
 
 
-def fetch_all_preprints_papers(topic, limit=10, target_dir=None, filters=None):
+def fetch_essoar_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
+    """Search ESS Open Archive DOI records and download their public PDF links."""
+    filters = filters or {}
+    records = []
+    url = "https://api.crossref.org/works"
+    params = {
+        "query": topic,
+        "filter": "type:posted-content,prefix:10.22541",
+        "rows": min(max(1, limit) * 2, 100),
+        "offset": max(0, int(offset)),
+        "mailto": os.getenv("RESEARCH_CONTACT_EMAIL", "outreach@example.org"),
+    }
+    if filters.get("year_from"):
+        params["filter"] += f",from-pub-date:{filters['year_from']}-01-01"
+    if filters.get("year_to"):
+        params["filter"] += f",until-pub-date:{filters['year_to']}-12-31"
+
+    try:
+        items = []
+        for prefix in ("10.22541", "10.1002"):
+            query_params = dict(params)
+            query_params["filter"] = query_params["filter"].replace(
+                "prefix:10.22541", f"prefix:{prefix}", 1
+            )
+            response = get_with_backoff(url, params=query_params, headers=API_HEADERS, timeout=20)
+            if response is not None and response.status_code == 200:
+                items.extend(response.json().get("message", {}).get("items", []))
+            if len(items) >= limit * 2:
+                break
+        for item in items:
+            if len(records) >= limit:
+                break
+            doi = item.get("DOI", "")
+            if not doi:
+                continue
+            title = (item.get("title") or ["Untitled ESS Open Archive preprint"])[0]
+            authors = [
+                f"{author.get('given', '')} {author.get('family', '')}".strip()
+                for author in item.get("author", [])
+            ]
+            urls = [f"https://essopenarchive.org/doi/pdf/{doi}"]
+            urls.extend(link.get("URL") for link in item.get("link", []) if link.get("URL"))
+            record = {"title": title, "authors": authors, "doi": doi, "source_journal": "ESS Open Archive", "emails": []}
+            if target_dir:
+                path = os.path.join(target_dir, f"essoar_{len(records) + 1}.pdf")
+                if _download_first_pdf(urls, path):
+                    record["file_path"] = path
+                    record["pdf_name"] = os.path.basename(path)
+            records.append(record)
+    except Exception as exc:
+        log.warning("[ESS Open Archive] Search failed: %s", exc)
+    return records
+
+
+def fetch_eric_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
+    """Search ERIC's public API and download only records with ERIC full text."""
+    filters = filters or {}
+    records = []
+    params = {
+        "search": topic, "format": "json", "rows": min(max(1, limit) * 3, 200),
+        "start": max(0, int(offset)),
+        "fields": "id,title,author,fulltextauth,url,publicationdateyear",
+    }
+    if filters.get("year_from"):
+        params["publicationdatestart"] = f"{filters['year_from']}-01-01"
+    if filters.get("year_to"):
+        params["publicationdateend"] = f"{filters['year_to']}-12-31"
+    try:
+        response = get_with_backoff("https://api.ies.ed.gov/eric/", params=params, headers=API_HEADERS, timeout=20)
+        if response is None or response.status_code != 200:
+            return records
+        docs = response.json().get("response", {}).get("docs", [])
+        for doc in docs:
+            if len(records) >= limit:
+                break
+            eric_id = doc.get("id", "")
+            full_text = doc.get("fulltextauth")
+            if isinstance(full_text, list):
+                full_text = any(str(value).lower() in {"yes", "true", "1", "y"} for value in full_text)
+            if str(full_text).lower() not in {"yes", "true", "1", "y"} or not eric_id or not target_dir:
+                continue
+            pdf_url = f"https://files.eric.ed.gov/fulltext/{eric_id}.pdf"
+            path = os.path.join(target_dir, f"eric_{len(records) + 1}.pdf")
+            if not _download_first_pdf([pdf_url], path):
+                continue
+            authors = doc.get("author", [])
+            if isinstance(authors, str):
+                authors = [name.strip() for name in re.split(r"\s*[;,]\s*", authors) if name.strip()]
+            records.append({
+                "title": doc.get("title") or "Untitled ERIC record", "authors": authors,
+                "doi": doc.get("id", ""), "source_journal": "ERIC",
+                "file_path": path, "pdf_name": os.path.basename(path), "emails": [],
+            })
+    except Exception as exc:
+        log.warning("[ERIC] Search failed: %s", exc)
+    return records
+
+
+def _download_first_pdf(urls, file_path):
+    for url in urls:
+        if url and _download_pdf(url, file_path):
+            return True
+    return False
+
+
+def _has_pdf_file(record):
+    path = record.get("file_path")
+    try:
+        with open(path, "rb") as pdf_file:
+            return pdf_file.read(5) == b"%PDF-"
+    except (OSError, TypeError):
+        return False
+
+
+def fetch_all_preprints_papers(topic, limit=10, target_dir=None, filters=None, offset=0):
     """
-    Master combined extractor across ALL preprint servers in the infographic:
-    arXiv, bioRxiv, ChemRxiv, Preprints.org, OSF Network (EarthArXiv, PsyArXiv,
-    SocArXiv, AgriXiv, engrXiv), SSRN, RePEc, SciELO, and PeerJ.
+    Discover across listed preprint services, returning only validated PDF files.
     """
     filters = filters or {}
     log.info(f"[All Preprints] Unified search across all preprint archives for '{topic}' (limit={limit})...")
 
-    # 1. Fetch OSF preprints (greatest direct PDF yield)
-    per_repo = max(2, limit // 3)
     results = []
-
-    osf_records = fetch_osf_papers(topic, limit=per_repo, target_dir=target_dir, filters=filters)
-    results.extend(osf_records)
-
-    # 2. Fetch Preprints.org
-    if len(results) < limit:
+    # OSF hosts FocUS, Law Archive, PsyArXiv, SocArXiv and related servers.
+    # Every distinct connector is queried once; paper-level deduplication happens in the worker.
+    sources = [
+        (fetch_osf_papers, {"specific_prefix": None}),
+        (fetch_preprints_org_papers, {}),
+        (fetch_chemrxiv_papers, {}),
+        (fetch_ssrn_papers, {}),
+        (fetch_repec_papers, {}),
+        (fetch_scielo_preprints_papers, {}),
+        (fetch_openalex_papers, {"offset": offset}),
+    ]
+    seen_connectors = set()
+    for fetcher, extra in sources:
+        if fetcher in seen_connectors:
+            continue
+        seen_connectors.add(fetcher)
         remaining = limit - len(results)
-        preprints_org_records = fetch_preprints_org_papers(topic, limit=remaining, target_dir=target_dir, filters=filters)
-        results.extend(preprints_org_records)
-
-    # 3. Fetch ChemRxiv
-    if len(results) < limit:
-        remaining = limit - len(results)
-        chem_records = fetch_chemrxiv_papers(topic, limit=remaining, target_dir=target_dir, filters=filters)
-        results.extend(chem_records)
-
-    # 4. Fetch SSRN
-    if len(results) < limit:
-        remaining = limit - len(results)
-        ssrn_records = fetch_ssrn_papers(topic, limit=remaining, target_dir=target_dir, filters=filters)
-        results.extend(ssrn_records)
-
-    # 5. Fallback to OpenAlex type:preprint if still under limit
-    if len(results) < limit:
-        remaining = limit - len(results)
-        oa_url = "https://api.openalex.org/works"
-        params = {
-            "search": topic,
-            "filter": "type:preprint",
-            "per-page": min(remaining * 2, 50),
-            "mailto": "23r25a6702@mlrit.ac.in"
-        }
+        if remaining <= 0:
+            break
         try:
-            resp = requests.get(oa_url, params=params, headers=API_HEADERS, timeout=20)
-            if resp.status_code == 200:
-                for it in resp.json().get("results", []):
-                    if len(results) >= limit:
-                        break
-                    title = it.get("title") or "Untitled Preprint"
-                    doi = it.get("doi") or ""
-                    authors = [a.get("author", {}).get("display_name", "Author") for a in it.get("authorships", [])]
-                    source_name = ((it.get("primary_location") or {}).get("source") or {}).get("display_name") or "Preprints"
-
-                    emails = []
-                    for a in it.get("authorships", []):
-                        for aff in a.get("raw_affiliation_strings", []):
-                            for em in EMAIL_RE.findall(aff):
-                                c = em.strip().rstrip(".").lower()
-                                if c not in emails:
-                                    emails.append(c)
-
-                    results.append({
-                        "title": title,
-                        "authors": authors,
-                        "doi": doi,
-                        "source_journal": source_name,
-                        "emails": emails
-                    })
-        except Exception as e:
-            log.error(f"[All Preprints] OpenAlex fallback error: {e}")
+            candidates = fetcher(topic, limit=remaining, target_dir=target_dir, filters=filters, **extra)
+        except TypeError:
+            try:
+                candidates = fetcher(topic, limit=remaining, target_dir=target_dir, filters=filters)
+            except Exception as exc:
+                log.warning("[All Preprints] %s search failed: %s", fetcher.__name__, exc)
+                continue
+        except Exception as exc:
+            log.warning("[All Preprints] %s search failed: %s", fetcher.__name__, exc)
+            continue
+        results.extend(record for record in candidates if _has_pdf_file(record))
 
     return results[:limit]

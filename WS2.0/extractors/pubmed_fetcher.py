@@ -56,10 +56,10 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None, offset=0
             log.info(f"[PubMed] No results found for query: {query}")
             return []
 
-        # Fetch paper details using eFetch XML in chunks of 100
+        # Fetch paper details using eFetch XML in chunks of 40
         fetch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
         papers = []
-        batch_size = 100
+        batch_size = 40
 
         for i in range(0, len(id_list), batch_size):
             chunk = id_list[i:i + batch_size]
@@ -69,7 +69,7 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None, offset=0
                 "retmode": "xml"
             }
             try:
-                fetch_resp = http_session.get(fetch_url, params=fetch_params, timeout=30)
+                fetch_resp = http_session.get(fetch_url, params=fetch_params, timeout=15)
                 if fetch_resp.status_code != 200:
                     log.error(f"[PubMed] eFetch batch failed with HTTP {fetch_resp.status_code}")
                     continue

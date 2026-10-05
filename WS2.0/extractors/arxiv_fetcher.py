@@ -17,9 +17,9 @@ API_HEADERS = {
     "User-Agent": POLITE_USER_AGENT
 }
 
-# Stealth headers for HTML page / PDF downloads
-STEALTH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+# Public repository identification for HTML page / PDF downloads
+PDF_HEADERS = {
+    "User-Agent": POLITE_USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 }
 
@@ -41,7 +41,8 @@ def _extract_emails_from_html(abstract_url):
     JavaScript library version strings like 'dompurify@2.3.5'.
     """
     try:
-        resp = requests.get(abstract_url, headers=STEALTH_HEADERS, timeout=8)
+        polite_jitter()
+        resp = requests.get(abstract_url, headers=PDF_HEADERS, timeout=8)
         if resp.status_code != 200:
             return []
         html = resp.text
@@ -67,7 +68,8 @@ def _extract_emails_from_html(abstract_url):
 def _download_pdf(url, file_path, timeout=12):
     """Download PDF — used only as fallback when HTML has no emails."""
     try:
-        resp = requests.get(url, headers=STEALTH_HEADERS, timeout=timeout, allow_redirects=True)
+        polite_jitter()
+        resp = requests.get(url, headers=PDF_HEADERS, timeout=timeout, allow_redirects=True)
         if resp.status_code == 200 and (
             resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]
         ):
@@ -114,7 +116,7 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwarg
     log.info(f"[arXiv] Searching: {search_query!r} (start={offset}, up to {limit} papers)...")
 
     try:
-        time.sleep(1)  # Reduced from 3s — only 1 API call needed
+        polite_jitter()
         resp = requests.get(base_url, params=params, headers=API_HEADERS, timeout=15)
         if resp.status_code != 200:
             log.warning(f"[arXiv] Search failed. HTTP {resp.status_code}")
@@ -201,7 +203,7 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwarg
         records.append(record)
 
         # Automated Request Jitter between paper fetches
-        polite_jitter(0.3, 0.7)
+        polite_jitter()
 
     log.info(f"[arXiv] Done. Collected metadata for {len(records)} papers.")
     return records

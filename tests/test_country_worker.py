@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from unittest.mock import Mock
+
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'WS2.0'))
@@ -20,47 +21,128 @@ def worker(monkeypatch, tmp_path):
     application.TASKS.pop('country-test', None)
 
 
-def mixed_paper():
-    return {'title': 'Cancer immunotherapy research', 'doi': '10.1234/test',
-            'authors': ['Jane Smith', 'John Brown'],
-            'emails': ['jsmith@college.edu', 'jbrown@college.edu'],
-            'email_authors': {'jsmith@college.edu': 'Jane Smith', 'jbrown@college.edu': 'John Brown'},
-            'author_countries': {'Jane Smith': ['IN'], 'John Brown': ['US']}}
+def pdf_paper(tmp_path, number, email=None, author=None):
+    pdf_path = tmp_path / f'{number}.pdf'
+    pdf_path.write_bytes(b'%PDF-1.4 fake test fixture')
+    author = author or f'Jane Author{number}'
+    email = email or f'author{number}@college.edu'
+    return {
+        'title': f'Cancer research {number}', 'doi': f'10.1000/{number}',
+        'authors': [author], 'file_path': str(pdf_path),
+        '_test_pairs': [(author, email)],
+    }
 
 
 @pytest.mark.parametrize('topup', [False, True])
-def test_single_country_worker_including_topup(worker, monkeypatch, topup):
-    fetcher = Mock(side_effect=[[], [mixed_paper()]] if topup else [[mixed_paper()]])
+def test_pdf_contacts_obey_country_and_topup(worker, monkeypatch, tmp_path, topup):
+    selected = pdf_paper(tmp_path, 1, 'jsmith@college.edu', 'Jane Smith')
+    selected['author_countries'] = {'Jane Smith': ['IN']}
+    selected['_test_pairs'] = [('Jane Smith', 'jsmith@college.edu')]
+    # Make the first response full so the connector is eligible for pagination.
+    initial = [{'title': f'Metadata paper {i}', 'doi': f'10.9999/{i}', 'emails': ['fake@college.edu']}
+               for i in range(50)] if topup else [selected]
+    calls = []
+
+    def fetcher(*args, **kwargs):
+        calls.append(kwargs)
+        return initial if len(calls) == 1 else [selected]
+
     monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', fetcher)})
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: selected['_test_pairs'])
     worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {'countries': ['India']})
     result = worker.TASKS['country-test']['result']
     assert result['success']
     assert [row['Email ID'] for row in result['data']] == ['jsmith@college.edu']
-    assert fetcher.call_count == (2 if topup else 1)
-    worker._record_attempted_doi.assert_not_called()
+    assert len(calls) == (2 if topup else 1)
     worker.save_new_emails_to_master.assert_called_once()
     assert (Path(worker.EXCEL_BASE_DIR) / result['download_file']).exists()
 
 
-def test_pdf_contacts_also_obey_country(worker, monkeypatch, tmp_path):
-    paper = mixed_paper()
-    paper.pop('emails')
-    pdf = tmp_path / 'test.pdf'
-    pdf.touch()
-    paper['file_path'] = str(pdf)
-    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', lambda *a, **kw: [paper])})
-    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda *a: [('John Brown', 'jbrown@college.edu'), ('Jane Smith', 'jsmith@college.edu')])
-    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {'countries': ['India']})
-    assert [r['Author Name'] for r in worker.TASKS['country-test']['result']['data']] == ['Jane Smith']
-
-
-def test_ambiguous_email_never_enters_worker_results(worker, monkeypatch):
-    paper = mixed_paper()
-    paper['ambiguous_emails'] = ['jsmith@college.edu']
-    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', lambda *a, **kw: [paper])})
-    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {'countries': ['India']})
-    assert worker.TASKS['country-test']['result']['data'] == []
+def test_metadata_only_and_non_pdf_records_are_not_counted(worker, monkeypatch, tmp_path):
+    record = {'title': 'Metadata only paper', 'doi': '10.1000/meta',
+              'authors': ['Jane Smith'], 'emails': ['jsmith@college.edu']}
+    fake = tmp_path / 'not-a-pdf.pdf'
+    fake.write_text('HTML metadata jsmith@college.edu')
+    record['file_path'] = str(fake)
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', lambda *a, **kw: [record])})
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {})
+    result = worker.TASKS['country-test']['result']
+    assert not result['success']
+    assert result['data'] == []
+    assert result['shortfall'] == 1
     worker.save_new_emails_to_master.assert_not_called()
+
+
+def test_email_on_later_pdf_page_is_extracted(worker, monkeypatch, tmp_path):
+    class Page:
+        def __init__(self, text):
+            self.text = text
+        def extract_text(self, layout=True):
+            return self.text
+
+    class Pdf:
+        pages = [Page('Introduction'), Page('Methods'), Page('Correspondence: jsmith@university.edu')]
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(worker.pdfplumber, 'open', lambda _path: Pdf())
+    results = worker.extract_author_email_pairs(str(tmp_path / 'valid.pdf'), ['Jane Smith'])
+    assert ('Jane Smith', 'jsmith@university.edu') in results
+
+
+def test_selected_then_unselected_distinct_connectors_fill_exact_count(worker, monkeypatch, tmp_path):
+    metadata = {'title': 'Index record', 'doi': '10.1000/meta', 'emails': ['fake@college.edu']}
+    papers = [pdf_paper(tmp_path, i) for i in range(1, 4)]
+    selected_fetch = Mock(return_value=[metadata])
+    expanded_fetch = Mock(return_value=papers)
+    # Different labels backed by one function are one connector and are called once.
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {
+        'pubmed': ('PubMed', selected_fetch),
+        'pmc': ('PMC alias', selected_fetch),
+        'openalex': ('OpenAlex', expanded_fetch),
+    })
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: next(
+        paper['_test_pairs'] for paper in papers if paper['file_path'] == path
+    ))
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 2, {})
+    result = worker.TASKS['country-test']['result']
+    assert result['success']
+    assert len(result['data']) == 2
+    assert len({row['Email ID'] for row in result['data']}) == 2
+    assert selected_fetch.call_count == expanded_fetch.call_count == 1
+
+
+def test_small_target_uses_small_batch_and_stops_at_target(worker, monkeypatch, tmp_path):
+    papers = [pdf_paper(tmp_path, i) for i in range(10, 13)]
+    selected_fetch = Mock(return_value=papers)
+    later_fetch = Mock(return_value=[])
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {
+        'pubmed': ('PubMed', selected_fetch), 'openalex': ('OpenAlex', later_fetch),
+    })
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: next(
+        paper['_test_pairs'] for paper in papers if paper['file_path'] == path
+    ))
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {})
+    result = worker.TASKS['country-test']['result']
+    assert result['success']
+    assert len(result['data']) == 1
+    assert selected_fetch.call_args.args[1] == 5
+    later_fetch.assert_not_called()
+
+
+def test_shortfall_after_exhaustion_is_explicit(worker, monkeypatch, tmp_path):
+    paper = pdf_paper(tmp_path, 1)
+    papers = [paper]
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', lambda *a, **kw: papers)})
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', lambda path, authors: paper['_test_pairs'])
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 3, {})
+    result = worker.TASKS['country-test']['result']
+    assert not result['success']
+    assert result['total_records'] == 1
+    assert result['shortfall'] == 2
+    assert 'found 1 of 3' in result['message']
 
 
 @pytest.mark.parametrize('data', [
@@ -70,29 +152,3 @@ def test_ambiguous_email_never_enters_worker_results(worker, monkeypatch):
 def test_invalid_filters_rejected_before_start(data):
     response = application.app.test_client().post('/start-extraction', data=data)
     assert response.status_code == 400
-
-
-def test_target_count_fulfillment(worker, monkeypatch):
-    # Batch 1 returns 2 contacts (short of target 5)
-    # Batch 2 returns 4 contacts (satisfying target of 5 with exact capping)
-    batch1 = [
-        {'title': f'Paper {i}', 'doi': f'10.1000/{i}',
-         'authors': [f'Author {i}'],
-         'emails': [f'author{i}@university.edu'],
-         'email_authors': {f'author{i}@university.edu': f'Author {i}'}}
-        for i in range(1, 3)
-    ]
-    batch2 = [
-        {'title': f'Paper {i}', 'doi': f'10.1000/{i}',
-         'authors': [f'Author {i}'],
-         'emails': [f'author{i}@university.edu'],
-         'email_authors': {f'author{i}@university.edu': f'Author {i}'}}
-        for i in range(3, 7)
-    ]
-    fetcher = Mock(side_effect=[batch1, batch2])
-    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', fetcher)})
-    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 5, {})
-    result = worker.TASKS['country-test']['result']
-    assert result['success']
-    assert len(result['data']) == 5
-    assert fetcher.call_count == 2

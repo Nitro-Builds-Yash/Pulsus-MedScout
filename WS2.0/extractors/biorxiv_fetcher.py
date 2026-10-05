@@ -13,9 +13,9 @@ API_HEADERS = {
     "User-Agent": POLITE_USER_AGENT
 }
 
-# Stealth headers for PDF downloads
-STEALTH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+# Public repository identification for PDF downloads
+PDF_HEADERS = {
+    "User-Agent": POLITE_USER_AGENT,
     "Accept": "application/pdf,application/xhtml+xml,text/html,application/xml;q=0.9,*/*;q=0.8"
 }
 
@@ -27,7 +27,8 @@ def _download_pdf_with_retry(url, file_path, retries=1, timeout=10, delay=1):
     """Fail-fast download: Try once (or twice max), quickly timeout if stuck."""
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, headers=STEALTH_HEADERS, timeout=timeout, allow_redirects=True)
+            polite_jitter()
+            resp = requests.get(url, headers=PDF_HEADERS, timeout=timeout, allow_redirects=True)
             if resp.status_code == 200 and (
                 resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]
             ):
@@ -140,7 +141,8 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwa
                             jats_url = c_item.get("jatsxml")
                             found_emails = []
                             if jats_url:
-                                jats_resp = requests.get(jats_url, headers=STEALTH_HEADERS, timeout=10)
+                                polite_jitter()
+                                jats_resp = requests.get(jats_url, headers=PDF_HEADERS, timeout=10)
                                 if jats_resp.status_code == 200:
                                     raw_em = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', jats_resp.text)
                                     found_emails = list({e.lower().rstrip(".") for e in raw_em if not any(x in e.lower() for x in [".png", ".jpg", "example.com"])})
@@ -162,7 +164,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwa
                     log.debug(f"[bioRxiv API] Error for {doi}: {ex}")
 
             if api_success:
-                polite_jitter(0.3, 0.7)
+                polite_jitter()
                 continue
 
             # Fallback Step 2: Try direct PDF download if XML had no emails
@@ -172,7 +174,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwa
                 if _download_pdf_with_retry(pdf_url, file_path, retries=0):
                     pdf_success = True
                     break
-                polite_jitter(0.3, 0.7)
+                polite_jitter()
 
             if pdf_success:
                 saved_count += 1
@@ -187,7 +189,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None, offset=0, **kwa
             else:
                 log.warning(f"      -> Skipped (not found or download blocked).")
 
-            polite_jitter(0.3, 0.7)
+            polite_jitter()
             
         offset += params["rows"]
 

@@ -97,7 +97,8 @@ def fetch_elife_papers(topic, limit, target_dir, filters=None, page=1, offset=0,
         pdf_url = item.get("pdf", f"https://elifesciences.org/articles/{article_id}.pdf")
         
         try:
-            pdf_resp = requests.get(pdf_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=25)
+            polite_jitter()
+            pdf_resp = requests.get(pdf_url, headers={"User-Agent": POLITE_USER_AGENT}, timeout=25)
             if pdf_resp.status_code == 200 and b"%PDF" in pdf_resp.content[:10]:
                 with open(file_path, "wb") as f:
                     f.write(pdf_resp.content)
@@ -112,6 +113,6 @@ def fetch_elife_papers(topic, limit, target_dir, filters=None, page=1, offset=0,
             log.warning(f"[eLife] PDF download failed for article {article_id}: {e}")
             continue
         finally:
-            polite_jitter(0.3, 0.7)
+            polite_jitter()
             
     return records

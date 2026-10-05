@@ -10,7 +10,7 @@ def fetch_frontiers_papers(topic, limit, target_dir, filters=None):
     """
     Dedicated fetcher for Frontiers journals.
     Uses EuropePMC as the backend metadata & open-access PDF provider,
-    but injects strict delays to avoid any bot detection or rate limiting.
+    and uses respectful request pacing.
     """
     log.info("[Frontiers] Initiating stealth fetch via EuropePMC proxy...")
     
@@ -20,7 +20,7 @@ def fetch_frontiers_papers(topic, limit, target_dir, filters=None):
     
     enhanced_topic = f'({topic}) AND (PUBLISHER:"Frontiers Media S.A." OR PUBLISHER:"Frontiers Media SA" OR JOURNAL:"Frontiers")'
     
-    # Apply a strict pre-fetch delay to avoid bot detection
+    # Pause before requesting the public API.
     polite_jitter(2.5, 4.5)
     
     results = fetch_europepmc_papers(enhanced_topic, limit, target_dir, filters)

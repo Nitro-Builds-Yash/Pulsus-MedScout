@@ -18,6 +18,8 @@ from urllib.parse import urljoin, urlencode
 
 log = logging.getLogger("extraction.imedpub")
 
+from .http_client import POLITE_USER_AGENT
+
 try:
     from bs4 import BeautifulSoup
     _BS4_AVAILABLE = True
@@ -30,11 +32,7 @@ except ImportError:
     )
 
 _HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    )
+    "User-Agent": POLITE_USER_AGENT
 }
 
 _BASE_SEARCH_URL = "https://www.imedpub.com/search.php"

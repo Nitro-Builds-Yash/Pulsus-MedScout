@@ -104,7 +104,7 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
             page += 1
             if len(page_results) < per_page:
                 break
-            polite_jitter(0.3, 0.7)
+            polite_jitter()
 
         log.info(f"[OpenAlex] Got {len(items)} candidates across {page - 1} page(s).")
     except Exception as e:
@@ -171,9 +171,8 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
 
         for url in pdf_urls[:3]:  # Try at most top 3 open URLs
             try:
-                pdf_resp = requests.get(url, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                }, timeout=8, allow_redirects=True)
+                polite_jitter()
+                pdf_resp = requests.get(url, headers={"User-Agent": POLITE_USER_AGENT}, timeout=8, allow_redirects=True)
                 if pdf_resp.status_code == 200 and (
                     pdf_resp.content.startswith(b"%PDF") or b"%PDF-" in pdf_resp.content[:1024]
                 ):
@@ -202,6 +201,6 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
                 rec["file_path"] = file_path
                 rec["pdf_name"]  = pdf_name
             records.append(rec)
-            polite_jitter(0.3, 0.7)
+            polite_jitter()
 
     return records

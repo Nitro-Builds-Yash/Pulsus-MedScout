@@ -12,18 +12,8 @@ POLITE_USER_AGENT = (
     f"Pulsus-MedScout/2.0 (Biomedical Literature & Author Intelligence; mailto:{RESEARCH_EMAIL})"
 )
 
-DEFAULT_BROWSER_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-)
-
-
-def polite_jitter(min_seconds: float = 0.3, max_seconds: float = 0.7):
-    """
-    Automated Request Jitter:
-    Injects a randomized pause (300ms - 700ms) between paper fetches in loops
-    to avoid triggering bot detection or aggressive burst rate limiters.
-    """
+def polite_jitter(min_seconds: float = 1.0, max_seconds: float = 1.5):
+    """Pause between requests to reduce load and respect repository rate limits."""
     sleep_duration = random.uniform(min_seconds, max_seconds)
     time.sleep(sleep_duration)
 

@@ -15,9 +15,9 @@ API_HEADERS = {
     "User-Agent": POLITE_USER_AGENT
 }
 
-# Stealth headers for PDF downloads (bypass anti-bot blocks)
-STEALTH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+# Public repository identification for PDF downloads
+PDF_HEADERS = {
+    "User-Agent": POLITE_USER_AGENT,
     "Accept": "application/pdf,application/xhtml+xml,text/html,application/xml;q=0.9,*/*;q=0.8"
 }
 
@@ -65,7 +65,8 @@ def _all_urls_blocked(urls):
 def _download_pdf(url, file_path, timeout=12):
     """Download a PDF. Returns True on success, False on any failure."""
     try:
-        resp = requests.get(url, headers=STEALTH_HEADERS, timeout=timeout, allow_redirects=True)
+        polite_jitter()
+        resp = requests.get(url, headers=PDF_HEADERS, timeout=timeout, allow_redirects=True)
         if resp.status_code == 200 and (
             resp.content.startswith(b"%PDF") or b"%PDF-" in resp.content[:1024]
         ):
@@ -268,7 +269,7 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None, offset=0, **kw
             else:
                 source_journal = "Crossref"
 
-            polite_jitter(0.3, 0.7)
+            polite_jitter()
             pdf_name = f"crossref_paper_{saved_count + 1}.pdf"
             file_path = os.path.join(target_dir, pdf_name)
 

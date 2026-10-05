@@ -36,7 +36,27 @@ const sources = [
   { num: 32, id: 'eartharxiv',      name: 'EarthArXiv',           category: 'Preprints',  mode: 'Earth & Planetary Sciences', checked: false },
   { num: 33, id: 'essoar',          name: 'ESSOAr',               category: 'Preprints',  mode: 'Space & Earth Science Archive', checked: false },
   { num: 34, id: 'scielo',          name: 'SciELO',               category: 'Global',     mode: 'Latin America & Global Network', checked: false },
-  { num: 35, id: 'hal',             name: 'HAL Open Archive',     category: 'Global',     mode: 'French National Open Archive', checked: false }
+  { num: 35, id: 'hal',             name: 'HAL Open Archive',     category: 'Global',     mode: 'French National Open Archive', checked: false },
+  { num: 36, id: 'agrirxiv',        name: 'AgriXiv',              category: 'Preprints',  mode: 'Open preprint indexes', checked: false },
+  { num: 37, id: 'crimrxiv',        name: 'CrimRxiv',             category: 'Preprints',  mode: 'Open preprint indexes', checked: false },
+  { num: 38, id: 'engrxiv',         name: 'engrXiv',              category: 'Preprints',  mode: 'Open preprint indexes', checked: false },
+  { num: 39, id: 'focusarchive',    name: 'FocUS Archive',        category: 'Preprints',  mode: 'OSF preprint network', checked: false },
+  { num: 40, id: 'lawarxiv',        name: 'Law Archive',          category: 'Preprints',  mode: 'OSF preprint network', checked: false },
+  { num: 41, id: 'nutrixiv',        name: 'NutriXiv',             category: 'Preprints',  mode: 'Open preprint indexes', checked: false },
+  { num: 42, id: 'psyarxiv',        name: 'PsyArXiv',             category: 'Preprints',  mode: 'OSF preprint network', checked: false },
+  { num: 43, id: 'socarxiv',        name: 'SocArXiv',             category: 'Preprints',  mode: 'OSF preprint network', checked: false },
+  { num: 44, id: 'sportrxiv',       name: 'SportRxiv',            category: 'Preprints',  mode: 'Open preprint indexes', checked: false },
+  { num: 45, id: 'essopenarchive',  name: 'ESS Open Archive',     category: 'Preprints',  mode: 'Crossref metadata + PDF download', checked: false },
+  { num: 46, id: 'eric',            name: 'ERIC',                 category: 'Global',     mode: 'Public API + ERIC full-text PDFs', checked: false },
+  { num: 47, id: 'scielopreprints', name: 'SciELO Preprints',     category: 'Global',     mode: 'Open preprint indexes', checked: false },
+  { num: 48, id: 'repec',           name: 'RePEc',                category: 'Global',     mode: 'Open preprint indexes', checked: false },
+  { num: 49, id: 'peerjpreprints',  name: 'PeerJ Preprints',      category: 'Global',     mode: 'Open preprint indexes', checked: false },
+  { num: 50, id: 'riojournal',      name: 'RIO Journal',          category: 'Global',     mode: 'Crossref + open-PDF resolver', checked: false },
+  { num: 51, id: 'elis',            name: 'E-LIS / RCLIS',        category: 'Global',     mode: 'OpenAlex open-PDF index', checked: false },
+  { num: 52, id: 'microsoftacademic', name: 'Microsoft Academic', category: 'Global',     mode: 'OpenAlex / MAG index', checked: false },
+  { num: 53, id: 'cochrane',        name: 'Cochrane Library',     category: 'Biomedical', mode: 'Systematic Reviews & Trials', checked: false },
+  { num: 54, id: 'hubmed',          name: 'HubMed',               category: 'Biomedical', mode: 'Medical & Case Reports API', checked: false },
+  { num: 55, id: 'lancet',          name: 'The Lancet Preprints', category: 'Biomedical', mode: 'Lancet / SSRN mirror', checked: false }
 ];
 let records = [], running = false, toastTimer;
 for (const src of sources) {
@@ -245,7 +265,7 @@ form.addEventListener('submit', async event => {
   if ($('yearFrom').value && $('yearTo').value && Number($('yearFrom').value) > Number($('yearTo').value)) { message('The start year must be before the end year.'); $('yearFrom').focus(); return; }
   const data = new FormData(form), countries = checkedValues('countries');
   if ($('searchContext')) {
-    $('searchContext').textContent = `${$('topic').value.trim()} / ${countries.join(', ') || 'Worldwide'} / Up to ${$('maxPapers').value} contacts`;
+    $('searchContext').textContent = `${$('topic').value.trim()} / ${countries.join(', ') || 'Worldwide'} / Target: ${$('maxPapers').value} unique email contacts`;
     $('searchContext').hidden = false;
   }
   records = []; $('resultSearch').value = ''; $('resultCount').textContent = '0'; $('navCount').textContent = '0'; $('visibleCount').textContent = '';
@@ -267,7 +287,7 @@ form.addEventListener('submit', async event => {
       const percentage = Math.max(0, Math.min(100, Number(status.percentage) || 0));
       $('statusText').textContent = status.progress || 'Searching selected repositories…';
       $('percentage').textContent = `${percentage}%`; $('progressBar').style.width = `${percentage}%`;
-      $('progressDetail').textContent = `${status.contacts_found || 0} contacts found · Parallel search active`;
+      $('progressDetail').textContent = `${status.contacts_found || 0} / ${status.requested_count || 0} unique PDF contacts · ${status.papers_searched || 0} papers · ${status.pdfs_parsed || 0} PDFs parsed · ${status.sources_remaining || 0} sources left`;
 
       // Live Elapsed & ETA update
       const elapsedSec = Math.floor((Date.now() - startTime) / 1000);

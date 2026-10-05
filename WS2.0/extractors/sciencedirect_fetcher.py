@@ -131,7 +131,7 @@ def _scopus_search(topic, count, filters=None):
         return []
 
 
-# Publishers that actively block script-based PDF downloads (403 / bot detection)
+# Domains where direct full-text downloads may be restricted.
 # We never attempt these — they waste time and always fail.
 _BLOCKED_PUBLISHER_HOSTS = {
     "onlinelibrary.wiley.com",

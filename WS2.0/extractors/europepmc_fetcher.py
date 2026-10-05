@@ -3,7 +3,7 @@ import re
 import logging
 import requests
 
-from .http_client import polite_jitter
+from .http_client import POLITE_USER_AGENT, polite_jitter
 
 log = logging.getLogger("extraction.europepmc")
 
@@ -76,7 +76,7 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
 
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "AcademicEmailExtractor/1.0 (Research Outreach Tool)",
+        "User-Agent": POLITE_USER_AGENT,
         "Accept": "application/json",
     })
 
@@ -137,14 +137,14 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
             })
             continue
 
-        # 2. Try PDF download only if no emails in metadata
+        # 2. Try fast direct PDF download only if pmcid is available
         pdf_urls = []
         if pmcid:
-            pdf_urls.append(f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/pdf/")
-            pdf_urls.append(f"https://europepmc.org/articles/{pmcid}?pdf=render")
             pdf_urls.append(f"https://europepmc.org/backend/ptpmcrender.fcgi?accid={pmcid}&blobtype=pdf")
-        if doi and doi != "N/A":
-            pdf_urls.append(f"https://doi.org/{doi}")
+            pdf_urls.append(f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/pdf/")
+
+        if not pdf_urls:
+            continue
 
         pdf_name  = f"europepmc_paper_{saved + 1}.pdf"
         file_path = os.path.join(target_dir, pdf_name)
@@ -152,8 +152,8 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
         download_success = False
         for url in pdf_urls:
             try:
-                pdf_resp = session.get(url, timeout=10, allow_redirects=True, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                pdf_resp = session.get(url, timeout=4, allow_redirects=True, headers={
+                    "User-Agent": POLITE_USER_AGENT
                 })
                 if pdf_resp.status_code == 200 and (
                     pdf_resp.content.startswith(b"%PDF") or b"%PDF-" in pdf_resp.content[:1024]
@@ -163,7 +163,7 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
                     download_success = True
                     break
             except Exception as e:
-                log.warning(f"[EuropePMC] Download failed ({url}): {e}")
+                log.debug(f"[EuropePMC] Download failed ({url}): {e}")
 
         # If PDF succeeded, record this paper
         if download_success:
@@ -178,6 +178,6 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
                 "pdf_name":       pdf_name,
             })
 
-        polite_jitter(0.3, 0.7)
+        polite_jitter()
 
     return records

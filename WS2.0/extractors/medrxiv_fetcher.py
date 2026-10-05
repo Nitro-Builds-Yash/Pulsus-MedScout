@@ -1,13 +1,15 @@
 import os
 import requests
+from .http_client import POLITE_USER_AGENT, polite_jitter
 
 def download_binary_pdf(url, file_path):
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "User-Agent": POLITE_USER_AGENT,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9"
     }
     try:
+        polite_jitter()
         resp = requests.get(url, headers=headers, timeout=25, allow_redirects=True)
         if resp.status_code == 200 and b"%PDF" in resp.content[:20]:
             with open(file_path, "wb") as f:
