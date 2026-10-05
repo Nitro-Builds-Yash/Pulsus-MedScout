@@ -2048,3 +2048,24 @@ body, h1, h2, h3, h4, h5, h6, label, p, span, strong, b, em, td, th {
 .table-wrap td {
   border-bottom: 1px solid rgba(220, 38, 38, 0.1) !important;
 }
+
+
+/* Ensure primary button text and arrow are completely crisp, non-blurred white */
+.primary-button {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.primary-button, .primary-button * {
+  color: #FFFFFF !important;
+  filter: none !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.3px !important;
+}
+
+.primary-button span {
+  color: #FFFFFF !important;
+}
