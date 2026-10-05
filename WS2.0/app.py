@@ -690,11 +690,11 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
         n_sources = len(source_sites)
         start_time = time.time()
-        # Goal-driven quota: To get `max_papers` verified contacts quickly
+        # Goal-driven quota: To get `max_papers` verified contacts quickly and fulfill target limit
         if n_sources == 1:
-            per_source_max = min(60, max(5, max_papers * 2))
+            per_source_max = min(120, max(10, max_papers * 3))
         else:
-            per_source_max = min(25, max(4, int((max_papers * 2) / min(n_sources, 6)) + 1))
+            per_source_max = min(60, max(8, int((max_papers * 2.5) / min(n_sources, 6)) + 2))
 
         total_downloaded = 0
         doi_skipped_count = 0

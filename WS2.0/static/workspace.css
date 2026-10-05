@@ -2069,3 +2069,45 @@ body, h1, h2, h3, h4, h5, h6, label, p, span, strong, b, em, td, th {
 .primary-button span {
   color: #FFFFFF !important;
 }
+
+
+/* --- Crisp Visibility Fixes for Status Tag, MedScout Brand & Busy Buttons --- */
+.status-tag, .status-tag.busy, .status-tag.done {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.4px !important;
+}
+
+.status-tag.busy {
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+}
+
+.brand, .brand *, .brand-mark, .brand-mark * {
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+.brand {
+  color: #B91C1C !important;
+  font-weight: 800 !important;
+}
+
+.brand-mark svg {
+  stroke: #FFFFFF !important;
+  filter: none !important;
+}
+
+.primary-button:disabled, button:disabled {
+  opacity: 0.95 !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
