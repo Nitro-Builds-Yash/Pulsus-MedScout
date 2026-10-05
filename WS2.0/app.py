@@ -700,8 +700,12 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         total_downloaded = 0
         doi_skipped_count = 0
 
-        # High speed parallel dispatch: fetch up to 4 repositories concurrently
-        max_workers = min(4, n_sources)
+        # Priority sorting: query high-yield direct-metadata APIs first before slower PDF sources
+        FAST_API_SOURCES = {"pubmed", "europepmc", "openalex", "crossref", "plos", "semanticscholar", "elife", "imedpub"}
+        sorted_sources = sorted(source_sites, key=lambda s: 0 if s in FAST_API_SOURCES else 1)
+
+        # High-speed parallel dispatch: scale up concurrency to 10 workers for rapid multi-source execution
+        max_workers = min(10, n_sources)
 
         def _fetch_single_source(src_tuple):
             s_idx, s_key = src_tuple
@@ -717,7 +721,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
         task_update(
             task_id, "running",
-            f"Searching {n_sources} repositories in parallel...",
+            f"Searching {n_sources} repositories in parallel (fast API pipeline)...",
             percentage=15,
             contacts_found=0
         )
@@ -725,7 +729,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_src = {
                 executor.submit(_fetch_single_source, (idx, key)): (idx, key)
-                for idx, key in enumerate(source_sites)
+                for idx, key in enumerate(sorted_sources)
             }
 
             completed_sources = 0

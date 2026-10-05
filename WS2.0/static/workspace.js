@@ -129,6 +129,15 @@ for (const [id, checked] of [['selectSources', true], ['clearSources', false]]) 
     updateSelection();
   });
 }
+if ($('selectFastSources')) {
+  $('selectFastSources').addEventListener('click', () => {
+    const fastSources = new Set(['pubmed', 'europepmc', 'openalex', 'plos', 'crossref', 'semanticscholar', 'elife']);
+    for (const el of form.querySelectorAll('[name="source_sites[]"]')) {
+      el.checked = fastSources.has(el.value);
+    }
+    updateSelection();
+  });
+}
 for (const btn of document.querySelectorAll('.source-filter-btn')) {
   btn.addEventListener('click', () => {
     const cat = btn.dataset.cat;

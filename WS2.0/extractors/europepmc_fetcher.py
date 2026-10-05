@@ -122,7 +122,19 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
                 if clean not in found_emails:
                     found_emails.append(clean)
 
-        # 2. Try PDF download
+        # If emails were already found in author affiliations metadata, skip slow PDF downloading!
+        if found_emails:
+            saved += 1
+            records.append({
+                "title":          title,
+                "authors":        authors_meta,
+                "doi":            doi,
+                "source_journal": source_journal,
+                "emails":         found_emails,
+            })
+            continue
+
+        # 2. Try PDF download only if no emails in metadata
         pdf_urls = []
         if pmcid:
             pdf_urls.append(f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/pdf/")
@@ -137,7 +149,7 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
         download_success = False
         for url in pdf_urls:
             try:
-                pdf_resp = session.get(url, timeout=20, allow_redirects=True, headers={
+                pdf_resp = session.get(url, timeout=10, allow_redirects=True, headers={
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
                 })
                 if pdf_resp.status_code == 200 and (
@@ -150,19 +162,17 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
             except Exception as e:
                 log.warning(f"[EuropePMC] Download failed ({url}): {e}")
 
-        # If PDF succeeded or if emails were found in affiliations, record this paper
-        if download_success or found_emails:
+        # If PDF succeeded, record this paper
+        if download_success:
             saved += 1
-            rec = {
+            records.append({
                 "title":          title,
                 "authors":        authors_meta,
                 "doi":            doi,
                 "source_journal": source_journal,
                 "emails":         found_emails,
-            }
-            if download_success:
-                rec["file_path"] = file_path
-                rec["pdf_name"]  = pdf_name
-            records.append(rec)
+                "file_path":      file_path,
+                "pdf_name":       pdf_name,
+            })
 
     return records
