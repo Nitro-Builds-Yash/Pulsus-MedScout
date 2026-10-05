@@ -43,9 +43,12 @@ def fetch_semanticscholar_papers(topic, limit=10, target_dir=None, filters=None)
         params["year"] = year_param
 
     try:
-        resp = http_session.get(url, params=params, headers=headers, timeout=20)
-        if resp.status_code != 200:
-            log.error(f"[SemanticScholar] API error HTTP {resp.status_code}: {resp.text}")
+        resp = http_session.get(url, params=params, headers=headers, timeout=8)
+        if resp.status_code == 429:
+            log.warning("[SemanticScholar] Rate limited (HTTP 429). Skipping silently without blocking search.")
+            return []
+        elif resp.status_code != 200:
+            log.info(f"[SemanticScholar] API HTTP {resp.status_code}. Skipping source.")
             return []
 
         data = resp.json()
