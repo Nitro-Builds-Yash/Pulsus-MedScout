@@ -5,8 +5,8 @@
 
 :root {
   --navy: #000000;
-  --ink: #F8FAFC;
-  --muted: #94A3B8;
+  --ink: #60A5FA;
+  --muted: #3B82F6;
   --line: rgba(225, 29, 72, 0.25);
   --line-subtle: rgba(225, 29, 72, 0.1);
   --page: #040814;
@@ -21,7 +21,7 @@
   --accent-glow: rgba(225, 29, 72, 0.25);
   --blue: #1D4ED8;
   --blue-dark: #0F172A;
-  --white: #FFFFFF;
+  --white: #000000;
   --ruby-glow: rgba(225, 29, 72, 0.25);
   font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
   color: var(--ink);
@@ -149,7 +149,7 @@ small {
   line-height: 42px;
   font-weight: 700;
   background: linear-gradient(135deg, var(--accent) 0%, var(--maroon-light) 100%);
-  color: #FFFFFF;
+  color: #000000;
   border: 1px solid rgba(225, 29, 72, 0.5);
   width: 42px;
   height: 44px;
@@ -164,7 +164,7 @@ small {
   position: absolute;
   top: 1px;
   right: 3px;
-  color: #FFFFFF;
+  color: #000000;
 }
 
 .side-label {
@@ -218,7 +218,7 @@ small {
 }
 
 .side-count {
-  color: #FFFFFF;
+  color: #000000;
   background: var(--accent);
   border: 1px solid rgba(225, 29, 72, 0.5);
   padding: 1px 7px;
@@ -766,7 +766,7 @@ input::placeholder {
 .topic-examples button:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: #FFFFFF;
+  color: #000000;
 }
 
 .filter-section {
@@ -944,7 +944,7 @@ input::placeholder {
 .year-presets button:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: #FFFFFF;
+  color: #000000;
 }
 
 summary {
@@ -1180,7 +1180,7 @@ details[open] .detail-value:after {
 
 .primary-button {
   background: linear-gradient(135deg, var(--accent) 0%, var(--maroon-light) 100%);
-  color: #FFFFFF;
+  color: #000000;
   border-radius: 8px;
   margin-top: 22px;
   padding: 14px 18px;
@@ -1247,7 +1247,7 @@ details[open] .detail-value:after {
   font-size: 12px;
   font-weight: 700;
   display: inline-block;
-  color: #FFFFFF;
+  color: #000000;
   background: var(--accent);
   border: 1px solid rgba(225, 29, 72, 0.5);
   padding: 2px 9px;
@@ -1268,7 +1268,7 @@ details[open] .detail-value:after {
 
 .status-tag.busy {
   background: var(--accent);
-  color: #FFFFFF;
+  color: #000000;
   border-color: var(--maroon-light);
   box-shadow: 0 0 12px rgba(225, 29, 72, 0.4);
 }
@@ -1405,7 +1405,7 @@ details[open] .detail-value:after {
   bottom: 2px;
   background: linear-gradient(135deg, var(--accent), var(--maroon-light));
   border: 4px solid var(--panel-bg);
-  color: #FFFFFF;
+  color: #000000;
   width: 42px;
   height: 42px;
   display: grid;
@@ -1644,14 +1644,14 @@ details[open] .detail-value:after {
 
 .secondary-button:hover {
   background: var(--accent);
-  color: #FFFFFF;
+  color: #000000;
   border-color: var(--accent);
 }
 
 .export-button {
   background: linear-gradient(135deg, var(--accent) 0%, var(--maroon-light) 100%) !important;
   border: 1px solid rgba(225, 29, 72, 0.4) !important;
-  color: #FFFFFF !important;
+  color: #000000 !important;
   box-shadow: 0 4px 14px rgba(225, 29, 72, 0.25);
   cursor: pointer;
 }
