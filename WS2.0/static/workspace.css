@@ -200,12 +200,12 @@ small {
   font-size: 12px;
   border-radius: 6px;
   margin-bottom: 7px;
-  color: #334155;
+  color: var(--ink);
   border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border-color: rgba(225, 29, 72, 0.25);
   color: var(--accent);
 }
@@ -243,7 +243,7 @@ small {
   margin-top: auto;
   margin-bottom: 60px;
   padding: 14px;
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(225, 29, 72, 0.22);
   border-radius: 8px;
 }
@@ -311,7 +311,7 @@ small {
 
 .sidebar-footer small {
   display: block;
-  color: #64748B;
+  color: var(--blue-dark);
   margin-top: 2px;
   font-weight: 400;
 }
@@ -354,7 +354,7 @@ small {
 }
 
 .breadcrumb {
-  color: #64748B;
+  color: var(--blue-dark);
   font-weight: 500;
 }
 
@@ -491,7 +491,7 @@ h1 em {
   border-radius: 20px;
   background: var(--panel-bg);
   border: 1px solid rgba(225, 29, 72, 0.2);
-  color: #334155;
+  color: var(--ink);
   letter-spacing: 0.2px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   transition: all 0.2s ease;
@@ -506,7 +506,7 @@ h1 em {
 
 .engine-badge.highlight {
   border-color: rgba(225, 29, 72, 0.45);
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   color: var(--maroon);
   font-weight: 700;
 }
@@ -607,7 +607,7 @@ h1 em {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: -0.15px;
-  color: #334155;
+  color: var(--ink);
   margin-bottom: 14px;
   white-space: nowrap;
   overflow: hidden;
@@ -621,7 +621,7 @@ h1 em {
   gap: 10px 14px;
   margin-bottom: 14px;
   padding: 10px 12px;
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border-radius: 8px;
   border: 1px solid rgba(225, 29, 72, 0.16);
 }
@@ -644,7 +644,7 @@ h1 em {
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.8px;
-  color: #64748B;
+  color: var(--blue-dark);
   margin-top: 3px;
 }
 
@@ -663,7 +663,7 @@ h1 em {
   background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.6); box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
   border: 1px solid rgba(225, 29, 72, 0.18);
   border-radius: 4px;
-  color: #334155;
+  color: var(--ink);
 }
 
 .pulsus-focus-tag:hover {
@@ -696,7 +696,7 @@ h1 em {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--panel-bg) 0%, #050505 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(240,246,255,0.7) 100%);
 }
 
 h2 {
@@ -772,13 +772,13 @@ input::placeholder {
   margin: 12px 0 0;
   align-items: center;
   font-size: 10.5px;
-  color: #64748B;
+  color: var(--blue-dark);
   flex-wrap: wrap;
 }
 
 .topic-examples button {
   color: var(--accent);
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(225, 29, 72, 0.25);
   padding: 4px 9px;
   border-radius: 4px;
@@ -819,7 +819,7 @@ input::placeholder {
 
 .field-hint {
   font-size: 11px;
-  color: #64748B;
+  color: var(--blue-dark);
   line-height: 1.5;
   margin: 6px 0 10px;
 }
@@ -848,7 +848,7 @@ input::placeholder {
   padding: 8px 4px 4px 0;
   margin-top: 4px;
   scrollbar-width: thin;
-  scrollbar-color: var(--accent) #050505;
+  scrollbar-color: var(--accent) rgba(255, 255, 255, 0.75);
 }
 
 .country-option {
@@ -862,14 +862,14 @@ input::placeholder {
   font-size: 10.5px;
   min-height: 32px;
   background: var(--panel-bg);
-  color: #334155;
+  color: var(--ink);
   position: relative;
   user-select: none;
 }
 
 .country-option:hover {
   border-color: var(--accent);
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   color: var(--accent);
 }
 
@@ -892,7 +892,7 @@ input::placeholder {
 .selection-summary {
   font-size: 10px;
   color: var(--accent);
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(225, 29, 72, 0.25);
   padding: 8px 10px;
   margin-top: 10px;
@@ -902,7 +902,7 @@ input::placeholder {
 }
 
 .evidence-note {
-  color: #64748B;
+  color: var(--blue-dark);
   font-size: 9.5px;
   line-height: 1.5;
   margin-top: 8px;
@@ -956,7 +956,7 @@ input::placeholder {
 
 .year-presets button {
   font-size: 10px;
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   color: var(--accent);
   padding: 4px 8px;
   border: 1px solid rgba(225, 29, 72, 0.25);
@@ -1011,7 +1011,7 @@ details[open] .detail-value:after {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #334155;
+  color: var(--ink);
 }
 
 .type-list label:hover, .source-list label:hover {
@@ -1066,7 +1066,7 @@ details[open] .detail-value:after {
   width: 5px;
 }
 .source-list::-webkit-scrollbar-track {
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border-radius: 4px;
 }
 .source-list::-webkit-scrollbar-thumb {
@@ -1089,7 +1089,7 @@ details[open] .detail-value:after {
 }
 
 .source-card:hover {
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border-color: var(--accent);
 }
 
@@ -1142,7 +1142,7 @@ details[open] .detail-value:after {
 }
 
 .source-tag.cat-preprints {
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   color: #D97706;
   border: 1px solid rgba(217, 119, 6, 0.35);
 }
@@ -1155,7 +1155,7 @@ details[open] .detail-value:after {
 
 .source-mode {
   font-size: 10px;
-  color: #64748B;
+  color: var(--blue-dark);
 }
 
 .source-actions {
@@ -1181,7 +1181,7 @@ details[open] .detail-value:after {
 .run-section small {
   display: block;
   font-size: 9.5px;
-  color: #64748B;
+  color: var(--blue-dark);
   margin-top: 2px;
 }
 
@@ -1212,7 +1212,7 @@ details[open] .detail-value:after {
 
 .submit-note {
   font-size: 9.5px;
-  color: #64748B;
+  color: var(--blue-dark);
   margin-top: 10px;
   text-align: center;
 }
@@ -1238,7 +1238,7 @@ details[open] .detail-value:after {
   padding: 22px 26px;
   border-bottom: 1px solid var(--line);
   gap: 12px;
-  background: linear-gradient(180deg, var(--panel-bg) 0%, #050505 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(240,246,255,0.7) 100%);
 }
 
 .results-header .eyebrow {
@@ -1306,7 +1306,7 @@ details[open] .detail-value:after {
   height: 188px;
   border: 1px solid rgba(225, 29, 72, 0.25);
   border-radius: 6px;
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .paper.back {
@@ -1431,7 +1431,7 @@ details[open] .detail-value:after {
 .empty-state p {
   font-size: 12.5px;
   line-height: 1.8;
-  color: #64748B;
+  color: var(--blue-dark);
   margin-top: 14px;
 }
 
@@ -1442,7 +1442,7 @@ details[open] .detail-value:after {
   justify-content: center;
   margin-top: 30px;
   font-size: 10.5px;
-  color: #334155;
+  color: var(--ink);
   font-weight: 600;
 }
 
@@ -1472,9 +1472,9 @@ details[open] .detail-value:after {
   align-items: center;
   gap: 8px;
   font-size: 9.5px;
-  color: #64748B;
+  color: var(--blue-dark);
   margin-top: auto;
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
 }
 
 .footer-dot {
@@ -1496,7 +1496,7 @@ details[open] .detail-value:after {
   border-bottom: 1px solid var(--line-subtle);
   font-size: 11.5px;
   color: var(--ink);
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   overflow-wrap: anywhere;
   font-weight: 500;
 }
@@ -1570,7 +1570,7 @@ details[open] .detail-value:after {
 
 .progress-box small {
   font-size: 10px;
-  color: #64748B;
+  color: var(--blue-dark);
 }
 
 .elapsed-counter {
@@ -1669,7 +1669,7 @@ details[open] .detail-value:after {
 .table-wrap {
   overflow: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--accent) #050505;
+  scrollbar-color: var(--accent) rgba(255, 255, 255, 0.75);
 }
 
 table {
@@ -1680,7 +1680,7 @@ table {
 }
 
 thead {
-  background: #050505;
+  background: rgba(255, 255, 255, 0.75);
   border-bottom: 1px solid var(--line);
 }
 
@@ -1777,7 +1777,7 @@ td:first-child {
 #noMatches {
   text-align: center;
   padding: 40px;
-  color: #64748B;
+  color: var(--blue-dark);
   font-size: 12px;
 }
 
@@ -1786,7 +1786,7 @@ td:first-child {
   justify-content: space-between;
   gap: 14px;
   font-size: 10.5px;
-  color: #64748B;
+  color: var(--blue-dark);
   padding: 24px 2px 10px;
   border-top: 1px solid var(--line);
   margin-top: 20px;
@@ -1983,4 +1983,68 @@ td:first-child {
   box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
   transform: translateY(-2px);
   border-color: rgba(255,255,255,0.6);
+}
+
+/* --- Global Glossy (Glassmorphism) Enhancements --- */
+.sidebar, .topbar, .search-panel, .results-panel, .pulsus-enterprise-card,
+.topic-wrap, .small-input, .year-range label, .country-option, .type-list label,
+.source-card, .progress-box, .empty-state, .table-wrap, .result-tools,
+.engine-badge, .side-note, .pulsus-stats-grid {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 8px 32px 0 rgba(37, 99, 235, 0.08), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+body {
+  background-color: #FFFFFF !important;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(220, 38, 38, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(37, 99, 235, 0.07) 0%, transparent 40%),
+    linear-gradient(to right, rgba(220, 38, 38, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(37, 99, 235, 0.03) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+  color: var(--ink) !important;
+}
+
+/* Red as primary typography & main elements */
+body, h1, h2, h3, h4, h5, h6, label, p, span, strong, b, em, td, th {
+  color: #B91C1C;
+}
+
+/* Blue secondary palette styling */
+.text-button, .export-button, .secondary-button, .eta-badge, .badge-dot.sapphire, 
+.selection-summary, .evidence-note, .field-hint, .submit-note {
+  color: #1D4ED8 !important;
+}
+
+.text-button:hover, .secondary-button:hover {
+  color: #2563EB !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+
+/* Glossy Red Primary Elements */
+.primary-button, .brand-mark, .side-count {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(185, 28, 28, 0.95) 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Glossy Blue Secondary Elements */
+.export-button {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.88) 0%, rgba(29, 78, 216, 0.95) 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+.table-wrap th {
+  background: rgba(239, 246, 255, 0.75) !important;
+  color: #1D4ED8 !important;
+}
+
+.table-wrap td {
+  border-bottom: 1px solid rgba(220, 38, 38, 0.1) !important;
 }
