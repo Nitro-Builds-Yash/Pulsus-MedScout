@@ -6,9 +6,11 @@ import requests
 
 log = logging.getLogger("extraction.biorxiv")
 
+from .http_client import POLITE_USER_AGENT, polite_jitter
+
 # Polite headers for APIs
 API_HEADERS = {
-    "User-Agent": "AcademicEmailExtractor/1.0 (Research Outreach Tool)"
+    "User-Agent": POLITE_USER_AGENT
 }
 
 # Stealth headers for PDF downloads
@@ -140,7 +142,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
                                 jats_resp = requests.get(jats_url, headers=STEALTH_HEADERS, timeout=10)
                                 if jats_resp.status_code == 200:
                                     raw_em = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', jats_resp.text)
-                                    found_emails = list({e.lower().rstrip(".") for e in raw_em if not any(x in e.lower() for x in [".png", ".jpg", "example.com", "gmail.com"])})
+                                    found_emails = list({e.lower().rstrip(".") for e in raw_em if not any(x in e.lower() for x in [".png", ".jpg", "example.com"])})
 
                             if found_emails:
                                 saved_count += 1
@@ -159,7 +161,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
                     log.debug(f"[bioRxiv API] Error for {doi}: {ex}")
 
             if api_success:
-                time.sleep(0.5)
+                polite_jitter(0.3, 0.7)
                 continue
 
             # Fallback Step 2: Try direct PDF download if XML had no emails
@@ -169,7 +171,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
                 if _download_pdf_with_retry(pdf_url, file_path, retries=0):
                     pdf_success = True
                     break
-                time.sleep(0.5)
+                polite_jitter(0.3, 0.7)
 
             if pdf_success:
                 saved_count += 1
@@ -184,7 +186,7 @@ def fetch_biorxiv_papers(topic, limit, target_dir, filters=None):
             else:
                 log.warning(f"      -> Skipped (not found or download blocked).")
 
-            time.sleep(1)
+            polite_jitter(0.3, 0.7)
             
         offset += params["rows"]
 

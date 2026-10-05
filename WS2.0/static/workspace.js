@@ -172,9 +172,16 @@ function renderRows() {
       const td = document.createElement('td'); td.textContent = text; td.className = className; tr.append(td);
     }
     const td = document.createElement('td'); td.className = 'email-cell';
-    const a = document.createElement('a'); a.textContent = row['Email ID']; a.href = `mailto:${row['Email ID']}`;
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'copy-email'; button.textContent = 'Copy email'; button.setAttribute('aria-label', `Copy ${row['Email ID']}`); button.addEventListener('click', () => copy(row['Email ID']));
-    td.append(a, button); tr.append(td); $('tableBody').append(tr);
+    const emailVal = (row['Email ID'] || '').trim();
+    if (emailVal && emailVal.toLowerCase() !== 'n/a') {
+      const a = document.createElement('a'); a.textContent = emailVal; a.href = `mailto:${emailVal}`;
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'copy-email'; button.textContent = 'Copy email'; button.setAttribute('aria-label', `Copy ${emailVal}`); button.addEventListener('click', () => copy(emailVal));
+      td.append(a, button);
+    } else {
+      const span = document.createElement('span'); span.textContent = 'N/A'; span.style.color = 'var(--text-muted, #888)';
+      td.append(span);
+    }
+    tr.append(td); $('tableBody').append(tr);
   });
   $('noMatches').hidden = visible.length !== 0;
   $('visibleCount').textContent = `${visible.length} of ${records.length} contacts`;
@@ -201,8 +208,14 @@ function showResults(result) {
   records = (result.data || []).filter(row => {
     if (!['Paper Title', 'Author Name', 'Email ID'].every(key => typeof row[key] === 'string' && row[key].trim())) return false;
     const email = row['Email ID'].trim().toLowerCase();
-    if (!/^[\w.%+\-]+@[\w.\-]+\.[a-z]{2,}$/i.test(email) || seen.has(email) || email.includes('gmail.com')) return false;
-    seen.add(email); return true;
+    const isEmail = /^[\w.%+\-]+@[\w.\-]+\.[a-z]{2,}$/i.test(email);
+    if (isEmail) {
+      if (seen.has(email)) return false;
+      seen.add(email);
+      return true;
+    }
+    // Allow fallback record if email was not available
+    return true;
   });
   $('resultCount').textContent = records.length; $('navCount').textContent = records.length;
   $('resultTools').hidden = !records.length; $('tableWrap').hidden = !records.length;

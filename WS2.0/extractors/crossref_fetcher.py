@@ -7,16 +7,17 @@ import requests
 log = logging.getLogger("extraction.crossref")
 
 # --- Replace this with your email address ---
-CONTACT_EMAIL = "23r25a6702@mlrit.ac.in"
+from .http_client import POLITE_USER_AGENT, RESEARCH_EMAIL, polite_jitter
+CONTACT_EMAIL = RESEARCH_EMAIL
 
-# Polite headers for API calls (Crossref Polite Pool)
+# Standardized Polite headers for API calls (Crossref Polite Pool)
 API_HEADERS = {
-    "User-Agent": f"AcademicEmailExtractor/1.0 (Research Outreach Tool; mailto:{CONTACT_EMAIL})"
+    "User-Agent": POLITE_USER_AGENT
 }
 
 # Stealth headers for PDF downloads (bypass anti-bot blocks)
 STEALTH_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept": "application/pdf,application/xhtml+xml,text/html,application/xml;q=0.9,*/*;q=0.8"
 }
 
@@ -266,6 +267,7 @@ def fetch_crossref_papers(topic, limit, target_dir, filters=None):
             else:
                 source_journal = "Crossref"
 
+            polite_jitter(0.3, 0.7)
             pdf_name = f"crossref_paper_{saved_count + 1}.pdf"
             file_path = os.path.join(target_dir, pdf_name)
 

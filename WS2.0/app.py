@@ -289,10 +289,10 @@ def save_new_emails_to_master(new_rows):
     """Append newly found verified email rows to the master CSV file."""
     if not new_rows:
         return
-    # Ensure no gmail.com address can ever be written
+    # Filter rows with valid Email ID (allowing personal domains and gmail.com)
     new_rows = [
         r for r in new_rows
-        if r.get("Email ID") and "gmail.com" not in str(r.get("Email ID")).lower()
+        if r.get("Email ID")
     ]
     if not new_rows:
         return
@@ -341,8 +341,6 @@ _IGNORED_DOMAINS = frozenset({
     "frontiersin.org", "mdpi.com", "arxiv.org", "ssrn.com",
     "wiley.com", "springer.com", "elsevier.com", "tandfonline.com",
     "nature.com", "oup.com", "cambridge.org",
-    # Consumer webmail exclusions:
-    "gmail.com",
 })
 
 
@@ -359,10 +357,6 @@ def clean_and_validate_email(raw_email):
     local_part = cleaned.split("@")[0].lower()
     domain = cleaned.split("@")[-1].lower()
     tld = domain.split(".")[-1]
-
-    # Explicitly reject consumer webmail containing gmail.com
-    if "gmail.com" in domain or "gmail.com" in cleaned.lower():
-        return None
 
     # ISSUE-06: Reject generic / non-personal local parts
     if local_part in _GENERIC_LOCAL_PARTS:
@@ -648,6 +642,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
     short_id = task_id[:8]
     rows = []           # All rows strictly with keys: "Paper Title", "Author Name", "Email ID"
     pending_rows = []   # Batch buffer — flushed every 5 papers
+    harvested_candidates = []  # Discovered papers & authors when emails cannot be found
 
     if isinstance(source_sites, str):
         source_sites = [source_sites]
@@ -693,9 +688,9 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         start_time = time.time()
         # Goal-driven quota: To get `max_papers` verified contacts quickly
         if n_sources == 1:
-            per_source_max = min(120, max(25, max_papers * 2))
+            per_source_max = min(60, max(5, max_papers * 2))
         else:
-            per_source_max = min(25, max(6, int((max_papers * 2) / min(n_sources, 6)) + 2))
+            per_source_max = min(25, max(4, int((max_papers * 2) / min(n_sources, 6)) + 1))
 
         total_downloaded = 0
         doi_skipped_count = 0
@@ -780,6 +775,16 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         if not selected_countries:
                             _record_attempted_doi(item_doi)
                         seen_dois.add(item_doi)
+
+                    # Keep track of paper & author in case valid email cannot be collected
+                    if is_valid_title(paper_title):
+                        cand_authors = [a for a in item.get("authors", []) if is_valid_author(a) and contact_allowed(a, allowed_authors)]
+                        if cand_authors:
+                            harvested_candidates.append({
+                                "Paper Title": paper_title,
+                                "Author Name": cand_authors[0].strip(),
+                                "Email ID": "N/A"
+                            })
 
                     # 1. Pre-extracted emails (HTML / API)
                     pre_extracted = item.get("_html_emails") or item.get("emails", [])
@@ -880,6 +885,15 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                             _record_attempted_doi(item_doi)
                         seen_dois.add(item_doi)
 
+                    if is_valid_title(paper_title):
+                        cand_authors = [a for a in item.get("authors", []) if is_valid_author(a) and contact_allowed(a, allowed_authors)]
+                        if cand_authors:
+                            harvested_candidates.append({
+                                "Paper Title": paper_title,
+                                "Author Name": cand_authors[0].strip(),
+                                "Email ID": "N/A"
+                            })
+
                     pre_extracted = item.get("_html_emails") or item.get("emails", [])
                     if pre_extracted:
                         for email in pre_extracted:
@@ -930,8 +944,20 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     "Email ID": clean_and_validate_email(e)
                 })
         # Exact target capping: Return up to max_papers
-        rows = [r for r in final_strict_rows[:max_papers] if "gmail.com" not in r["Email ID"].lower()]
-        log.info(f"[Task {short_id}] Extraction complete. New verified rows: {len(rows)}")
+        rows = final_strict_rows[:max_papers]
+
+        # FALLBACK: For certain keywords where valid email couldn't be collected,
+        # collect the data present up to the contact limit of extraction (with "N/A" for email)
+        if not selected_countries and len(rows) < max_papers and harvested_candidates:
+            seen_titles = {r["Paper Title"].lower() for r in rows}
+            for cand in harvested_candidates:
+                if len(rows) >= max_papers:
+                    break
+                if cand["Paper Title"].lower() not in seen_titles:
+                    rows.append(cand)
+                    seen_titles.add(cand["Paper Title"].lower())
+
+        log.info(f"[Task {short_id}] Extraction complete. New rows (with fallback): {len(rows)}")
 
         if not rows:
             if doi_skipped_count > 0 and doi_skipped_count == total_downloaded:

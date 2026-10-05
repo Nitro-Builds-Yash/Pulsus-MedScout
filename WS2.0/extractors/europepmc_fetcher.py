@@ -109,16 +109,12 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None):
                         aff_str = aff_obj.get("affiliation", "")
                         for em in re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', aff_str):
                             clean = em.strip().rstrip(".").lower()
-                            if "gmail.com" in clean:
-                                continue
                             if clean not in found_emails:
                                 found_emails.append(clean)
         gen_aff = item.get("affiliation", "")
         if gen_aff:
             for em in re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', gen_aff):
                 clean = em.strip().rstrip(".").lower()
-                if "gmail.com" in clean:
-                    continue
                 if clean not in found_emails:
                     found_emails.append(clean)
 

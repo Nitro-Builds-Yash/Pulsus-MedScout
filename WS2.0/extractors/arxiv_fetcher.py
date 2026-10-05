@@ -7,12 +7,14 @@ import xml.etree.ElementTree as ET
 
 log = logging.getLogger("extraction.arxiv")
 
+from .http_client import POLITE_USER_AGENT, polite_jitter
+
 # arXiv Atom feed namespace
 ATOM_NS = "http://www.w3.org/2005/Atom"
 
 # Polite headers for API search
 API_HEADERS = {
-    "User-Agent": "AcademicEmailExtractor/1.0 (Research Outreach Tool)"
+    "User-Agent": POLITE_USER_AGENT
 }
 
 # Stealth headers for HTML page / PDF downloads
@@ -52,7 +54,7 @@ def _extract_emails_from_html(abstract_url):
                 continue               # Rejects: dompurify@2.3.5, icon@1.0, etc.
             if len(e) > 80:
                 continue
-            if any(x in e.lower() for x in ["arxiv", "latex", ".png", ".jpg", ".css", "example", "gmail.com"]):
+            if any(x in e.lower() for x in ["arxiv", "latex", ".png", ".jpg", ".css", "example"]):
                 continue
             clean.append(e.lower())
 
@@ -182,24 +184,24 @@ def fetch_arxiv_papers(topic, limit, target_dir, filters=None):
             # ---- STEP 2: Fall back to PDF only if HTML had nothing ----
             log.info(f"  [arXiv]   No email in HTML — trying PDF fallback...")
             success = _download_pdf(pdf_url, file_path)
-            if not success:
-                log.warning(f"  [arXiv]   PDF also failed, skipping.")
-                time.sleep(0.5)
-                continue
             record = {
-                "file_path": file_path,
-                "pdf_name": pdf_name,
+                "file_path": file_path if success else None,
+                "pdf_name": pdf_name if success else None,
                 "title": title,
                 "authors": authors_meta,
                 "doi": doi
             }
         else:
-            continue
+            record = {
+                "title": title,
+                "authors": authors_meta,
+                "doi": doi
+            }
 
         records.append(record)
 
-        # Minimal polite delay — just 1 second between HTML fetches
-        time.sleep(1)
+        # Automated Request Jitter between paper fetches
+        polite_jitter(0.3, 0.7)
 
     log.info(f"[arXiv] Done. Collected metadata for {len(records)} papers.")
     return records

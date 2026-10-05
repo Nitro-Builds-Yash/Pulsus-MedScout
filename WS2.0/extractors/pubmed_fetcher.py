@@ -111,8 +111,6 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
                             found_emails = EMAIL_RE.findall(aff_text)
                             for e in found_emails:
                                 clean_e = e.strip().rstrip(".").lower()
-                                if "gmail.com" in clean_e:
-                                    continue
                                 email_candidates.setdefault(clean_e, set()).add(name)
                                 if clean_e not in emails and not any(x in clean_e for x in [".png", ".jpg", ".gif"]):
                                     emails.append(clean_e)
@@ -124,8 +122,6 @@ def fetch_pubmed_papers(topic, limit=10, target_dir=None, filters=None):
                             found_emails = EMAIL_RE.findall(aff_text)
                             for e in found_emails:
                                 clean_e = e.strip().rstrip(".").lower()
-                                if "gmail.com" in clean_e:
-                                    continue
                                 if clean_e not in emails:
                                     emails.append(clean_e)
 

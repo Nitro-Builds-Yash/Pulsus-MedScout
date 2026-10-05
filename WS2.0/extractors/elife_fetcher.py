@@ -4,6 +4,8 @@ import requests
 
 log = logging.getLogger("extraction.elife")
 
+from .http_client import POLITE_USER_AGENT, polite_jitter
+
 # eLife article type mapping
 _ELIFE_TYPE_MAP = {
     "Article": "research-article",
@@ -53,7 +55,10 @@ def fetch_elife_papers(topic, limit, target_dir, filters=None):
     if year_to:
         params["end-date"]   = f"{year_to}-12-31"
 
-    headers = {"Accept": "application/vnd.elife.search+json;version=2"}
+    headers = {
+        "Accept": "application/vnd.elife.search+json;version=2",
+        "User-Agent": POLITE_USER_AGENT
+    }
     log.info(f"[eLife] Params: {params}")
     
     try:
@@ -103,5 +108,7 @@ def fetch_elife_papers(topic, limit, target_dir, filters=None):
         except Exception as e:
             log.warning(f"[eLife] PDF download failed for article {article_id}: {e}")
             continue
+        finally:
+            polite_jitter(0.3, 0.7)
             
     return records

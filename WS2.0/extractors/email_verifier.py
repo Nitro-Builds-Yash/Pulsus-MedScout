@@ -19,9 +19,6 @@ def check_email_deliverability(email, sender_domain="gmail.com", timeout=4):
     if not email or "@" not in email or not BASIC_EMAIL_RE.match(email):
         return "Undeliverable", "Invalid email syntax"
 
-    if "gmail.com" in email.lower():
-        return "Undeliverable", "Blocked consumer webmail (gmail.com)"
-
     domain = email.split("@")[1].strip()
 
     # Step 1: Check Domain MX Records

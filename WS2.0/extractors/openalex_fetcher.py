@@ -8,6 +8,7 @@ log = logging.getLogger("extraction.openalex")
 
 # Country name → ISO alpha-2 code (OpenAlex uses these codes)
 from .country_filter import COUNTRY_CODES as _COUNTRY_CODES
+from .http_client import POLITE_USER_AGENT, RESEARCH_EMAIL, polite_jitter
 
 # Article type name → OpenAlex type string
 _TYPE_MAP = {
@@ -66,7 +67,7 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
     log.info(f"[OpenAlex] filter={filter_str!r}")
 
     headers = {
-        "User-Agent": "AcademicEmailExtractor/1.0 (Research Outreach Tool; mailto:23r25a6702@mlrit.ac.in)"
+        "User-Agent": POLITE_USER_AGENT
     }
 
     items = []
@@ -82,7 +83,7 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
                 "per-page":  per_page,
                 "page":      page,
                 "sort":      "relevance_score:desc",
-                "mailto":    "23r25a6702@mlrit.ac.in",
+                "mailto":    RESEARCH_EMAIL,
             }
             resp = requests.get(base_url, params=params, headers=headers, timeout=25)
             if resp.status_code != 200:
@@ -95,7 +96,7 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
             page += 1
             if len(page_results) < per_page:
                 break
-            time.sleep(0.5)
+            polite_jitter(0.3, 0.7)
 
         log.info(f"[OpenAlex] Got {len(items)} candidates across {page - 1} page(s).")
     except Exception as e:
@@ -123,8 +124,6 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
             for aff in a.get("raw_affiliation_strings", []):
                 for em in re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', aff):
                     clean = em.strip().rstrip(".").lower()
-                    if "gmail.com" in clean:
-                        continue
                     if clean not in found_emails:
                         found_emails.append(clean)
 
@@ -195,6 +194,6 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None):
                 rec["file_path"] = file_path
                 rec["pdf_name"]  = pdf_name
             records.append(rec)
-            time.sleep(0.5)
+            polite_jitter(0.3, 0.7)
 
     return records

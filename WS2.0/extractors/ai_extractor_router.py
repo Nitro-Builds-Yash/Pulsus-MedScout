@@ -159,20 +159,13 @@ def extract_authors_and_emails(text: str, fallback_authors: list = None) -> list
         ai_results = extract_with_gemini(text, gemini_key)
 
     if ai_results:
-        # Filter out any email containing gmail.com
-        filtered_ai = []
-        for item in ai_results:
-            em = item.get("email")
-            if em and "gmail.com" in em.lower():
-                item["email"] = None
-            filtered_ai.append(item)
-        return filtered_ai
+        return ai_results
 
     # Heuristic Regex Fallback
     raw_emails = EMAIL_RE.findall(text)
     clean_emails = list({
         e.lower().rstrip(".") for e in raw_emails
-        if not any(x in e.lower() for x in [".png", ".jpg", ".jpeg", ".gif", "example.com", "domain.com", "gmail.com"])
+        if not any(x in e.lower() for x in [".png", ".jpg", ".jpeg", ".gif", "example.com", "domain.com"])
     })
 
     fallback_authors = fallback_authors or ["Author"]
