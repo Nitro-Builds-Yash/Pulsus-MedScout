@@ -207,8 +207,13 @@ function showResults(result) {
   $('resultCount').textContent = records.length; $('navCount').textContent = records.length;
   $('resultTools').hidden = !records.length; $('tableWrap').hidden = !records.length;
   $('emptyState').hidden = !!records.length;
-  $('downloadLink').hidden = !result.download_file;
-  if (result.download_file) $('downloadLink').href = `/download/${encodeURIComponent(result.download_file)}`;
+  if (result.download_file) {
+    $('downloadLink').href = `/download/${encodeURIComponent(result.download_file)}`;
+    $('downloadLink').setAttribute('download', result.download_file);
+    $('downloadLink').hidden = false;
+  } else {
+    $('downloadLink').hidden = true;
+  }
   $('statusTag').textContent = records.length ? 'Search complete' : 'No contacts found'; $('statusTag').className = 'status-tag done';
   if (result.message) message(result.message);
   renderRows();

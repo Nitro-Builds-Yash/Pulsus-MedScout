@@ -91,7 +91,7 @@ _INTRA_PROCESS_LOCK = threading.Lock()
 # handles cross-process races on the master_email_list.csv.
 # -----------------------------------------------------------
 LOCK_FILE = os.path.join(DOWNLOADS_DIR, "extraction.lock")
-_LOCK_TTL_SECONDS = 7200  # 2 hours — treat locks older than this as stale
+_LOCK_TTL_SECONDS = 300  # 5 minutes — prevent interrupted tasks from wedging the server
 
 
 def _acquire_extraction_lock():
