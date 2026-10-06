@@ -7,6 +7,7 @@ log = logging.getLogger("extraction.openalex")
 
 # Country name → ISO alpha-2 code (OpenAlex uses these codes)
 from .country_filter import COUNTRY_CODES as _COUNTRY_CODES
+from .country_filter import resolve_email_author
 from .http_client import POLITE_USER_AGENT, RESEARCH_EMAIL, polite_jitter
 
 # Article type name → OpenAlex type string
@@ -132,6 +133,7 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
         # Extract authors list and any affiliation emails
         authors_meta = []
         found_emails = []
+        email_author_candidates = {}
         for a in item.get("authorships", []):
             name = (a.get("author") or {}).get("display_name")
             if name:
@@ -141,6 +143,8 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
                     clean = em.strip().rstrip(".").lower()
                     if clean not in found_emails:
                         found_emails.append(clean)
+                    if name:
+                        email_author_candidates.setdefault(clean, set()).add(name.strip())
 
         # Collect all PDF URLs, prioritizing open repositories over commercial paywalls
         TRUSTED_HOSTS = ["arxiv.org", "europepmc.org", "ncbi.nlm.nih.gov", "pmc.ncbi.nlm.nih.gov", "biorxiv.org", "medrxiv.org", "mdpi.com", "frontiersin.org", "plos.org", "core.ac.uk", "zenodo.org", "researchsquare.com"]
@@ -176,7 +180,37 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
         file_path = os.path.join(target_dir, pdf_name)
         download_success = False
 
-        for url in pdf_urls[:3]:  # Try at most top 3 open URLs
+        record = {
+            "title": title,
+            "authors": authors_meta,
+            "doi": doi,
+            "source_journal": "OpenAlex",
+            "emails": found_emails,
+            "email_authors": {
+                email: next(iter(names))
+                for email, names in email_author_candidates.items()
+                if len(names) == 1
+            },
+            "ambiguous_emails": [
+                email for email, names in email_author_candidates.items()
+                if len(names) > 1
+            ],
+            "author_countries": {
+                (a.get("author") or {}).get("display_name", ""):
+                    (a.get("countries") or []) + [
+                        institution.get("country_code")
+                        for institution in a.get("institutions", [])
+                        if institution.get("country_code")
+                    ]
+                for a in item.get("authorships", [])
+            },
+        }
+        metadata_emails_are_mappable = any(
+            resolve_email_author(record, email) for email in found_emails
+        )
+        if metadata_emails_are_mappable:
+            pdf_urls = []
+        for url in pdf_urls[:3]:
             try:
                 polite_jitter()
                 pdf_resp = requests.get(url, headers={"User-Agent": POLITE_USER_AGENT}, timeout=8, allow_redirects=True)
@@ -198,22 +232,13 @@ def fetch_openalex_papers(topic, limit, target_dir, filters=None, page=1, offset
 
         if download_success or found_emails:
             saved_count += 1
-            source_journal = "OpenAlex"
             src_obj = (item.get("primary_location") or {}).get("source") or {}
             if src_obj.get("display_name"):
-                source_journal = src_obj["display_name"]
-            rec = {
-                "title":         title,
-                "authors":       authors_meta,
-                "doi":           doi,
-                "source_journal": source_journal,
-                "emails":        found_emails,
-                "author_countries": {(a.get("author") or {}).get("display_name", ""): (a.get("countries") or []) + [i.get("country_code") for i in a.get("institutions", []) if i.get("country_code")] for a in item.get("authorships", [])},
-            }
+                record["source_journal"] = src_obj["display_name"]
             if download_success:
-                rec["file_path"] = file_path
-                rec["pdf_name"]  = pdf_name
-            records.append(rec)
+                record["file_path"] = file_path
+                record["pdf_name"] = pdf_name
+            records.append(record)
             polite_jitter()
 
     return records

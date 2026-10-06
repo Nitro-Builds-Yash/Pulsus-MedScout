@@ -11,13 +11,17 @@ import pdfplumber
 import pandas as pd
 from flask import Flask, render_template, request, jsonify
 
-# Active open-access sources retained from the upstream WS2.0 registry.
+# Active source connectors from the upstream registry.
+from extractors.pubmed_fetcher import fetch_pubmed_papers
+from extractors.europepmc_fetcher import fetch_europepmc_papers
 from extractors.plos_fetcher import fetch_plos_papers
 from extractors.elife_fetcher import fetch_elife_papers
-from extractors.europepmc_fetcher import fetch_europepmc_papers
+from extractors.openalex_fetcher import fetch_openalex_papers
 from extractors.arxiv_fetcher import fetch_arxiv_papers
 from extractors.biorxiv_fetcher import fetch_biorxiv_papers
-from extractors.pubmed_fetcher import fetch_pubmed_papers
+from extractors.crossref_fetcher import fetch_crossref_papers
+from extractors.frontiers_fetcher import fetch_frontiers_papers
+from extractors.aha_fetcher import fetch_aha_papers
 
 from extractors.country_filter import COUNTRY_CODES, country_codes, eligible_authors, contact_allowed, resolve_email_author
 
@@ -509,20 +513,19 @@ def extract_author_email_pairs(pdf_source, metadata_authors):
 
 
 # -----------------------------------------------------------
-# Dispatch Mapping: sources retained from the active upstream WS2.0 set.
+# Dispatch Mapping: active source connectors aligned with the upstream registry.
 # -----------------------------------------------------------
-from extractors.frontiers_fetcher import fetch_frontiers_papers
-from extractors.aha_fetcher import fetch_aha_papers
-
 SOURCE_FETCHERS = {
-    "pubmed":      ("PubMed / NCBI", fetch_pubmed_papers),
-    "europepmc":   ("Europe PMC", fetch_europepmc_papers),
-    "plos":        ("PLOS ONE", fetch_plos_papers),
-    "elife":       ("eLife", fetch_elife_papers),
-    "arxiv":       ("arXiv.org", fetch_arxiv_papers),
-    "biorxiv":     ("bioRxiv / medRxiv", fetch_biorxiv_papers),
-    "frontiers":   ("Frontiers (Europe PMC open PDFs)", fetch_frontiers_papers),
-    "ahajournals": ("AHA Journals (Europe PMC open PDFs)", fetch_aha_papers),
+    "plos":       ("PLOS", fetch_plos_papers),
+    "europepmc":  ("Europe PMC", fetch_europepmc_papers),
+    "elife":      ("eLife", fetch_elife_papers),
+    "openalex":   ("OpenAlex", fetch_openalex_papers),
+    "arxiv":      ("arXiv", fetch_arxiv_papers),
+    "biorxiv":    ("bioRxiv / medRxiv", fetch_biorxiv_papers),
+    "crossref":   ("Crossref", fetch_crossref_papers),
+    "pubmed":     ("PubMed / NCBI", fetch_pubmed_papers),
+    "frontiers":  ("Frontiers", fetch_frontiers_papers),
+    "aha":        ("AHA Journals", fetch_aha_papers),
 }
 
 
@@ -671,7 +674,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
 
         # Start with a target-scaled batch to minimize first-result latency and
         # avoid unnecessary downloads when the requested count is small.
-        per_source_max = min(25, max(5, math.ceil(max_papers * 0.5)))
+        per_source_max = min(25, max(1, math.ceil(max_papers * 0.5)))
 
         def _pagination_step(source_key, requested_limit):
             """Return the result-window size used by offset-based connectors."""
@@ -715,15 +718,57 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         papers_searched = 0
         pdfs_downloaded = 0
         pdfs_parsed = 0
+        pending_pdf_cleanup = []
+
+        def _cleanup_processed_pdfs():
+            while pending_pdf_cleanup:
+                pdf_path = pending_pdf_cleanup.pop(0)
+                try:
+                    os.remove(pdf_path)
+                except FileNotFoundError:
+                    pass
+                except OSError as cleanup_error:
+                    log.warning(
+                        f"[Task {short_id}] Could not remove processed PDF "
+                        f"{pdf_path}: {cleanup_error}"
+                    )
+
+        def _queue_contact_pairs(pairs, paper_title, allowed_authors):
+            added = 0
+            for author, email in pairs:
+                if len(rows) + len(pending_rows) >= max_papers:
+                    break
+                clean_email = clean_and_validate_email(email)
+                if (
+                    not clean_email or clean_email in seen_emails
+                    or not contact_allowed(author, allowed_authors)
+                    or not is_valid_author(author) or not is_valid_title(paper_title)
+                ):
+                    continue
+                pair_key = (paper_title.lower(), author.strip().lower())
+                if clean_email in dedup_emails or pair_key in dedup_pairs:
+                    continue
+                pending_rows.append({
+                    "Paper Title": paper_title,
+                    "Author Name": author.strip(),
+                    "Email ID": clean_email,
+                })
+                seen_emails.add(clean_email)
+                added += 1
+            return added
 
         def _process_item(item):
             nonlocal doi_skipped_count, papers_searched, pdfs_downloaded, pdfs_parsed
             if len(rows) + len(pending_rows) >= max_papers:
                 return True
             papers_searched += 1
+            file_path = item.get("file_path")
 
             allowed_authors = eligible_authors(item, selected_countries, country_cache)
             if allowed_authors == set():
+                if file_path:
+                    pending_pdf_cleanup.append(file_path)
+                    _cleanup_processed_pdfs()
                 return False
             paper_title = (item.get("title") or "Untitled Paper").strip()
             item_doi_raw = item.get("doi", "")
@@ -732,10 +777,16 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             # Deduplicate by DOI if available
             if item_doi and item_doi in seen_dois:
                 doi_skipped_count += 1
+                if file_path:
+                    pending_pdf_cleanup.append(file_path)
+                    _cleanup_processed_pdfs()
                 return False
 
             paper_key = item_doi or paper_title.casefold()
             if paper_key in seen_paper_keys:
+                if file_path:
+                    pending_pdf_cleanup.append(file_path)
+                    _cleanup_processed_pdfs()
                 return False
             seen_paper_keys.add(paper_key)
 
@@ -744,53 +795,60 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     _record_attempted_doi(item_doi)
                 seen_dois.add(item_doi)
 
-            # Count contacts only when the fetcher saved a real PDF. Metadata
-            # emails remain useful to fetchers for discovery, never as results.
-            file_path = item.get("file_path")
-            pdf_bytes = item.pop("pdf_bytes", None)
-            keep_pdf_files = os.getenv("KEEP_DOWNLOADED_PDFS", "0").strip().lower() in {"1", "true", "yes"}
-            is_pdf = False
-            if isinstance(pdf_bytes, bytearray):
-                pdf_bytes = bytes(pdf_bytes)
-            if isinstance(pdf_bytes, bytes):
-                is_pdf = pdf_bytes.startswith(b"%PDF-")
-            elif file_path and os.path.isfile(file_path):
-                try:
-                    with open(file_path, "rb") as pdf_file:
-                        pdf_bytes = pdf_file.read()
+            metadata_emails = item.get("emails", [])
+            if isinstance(metadata_emails, str):
+                metadata_emails = [metadata_emails]
+            elif not isinstance(metadata_emails, (list, tuple)):
+                metadata_emails = []
+            metadata_pairs = (
+                (author, email)
+                for email in metadata_emails
+                if isinstance(email, str)
+                for author in [resolve_email_author(item, email)]
+                if author
+            )
+            metadata_contacts = _queue_contact_pairs(
+                metadata_pairs, paper_title, allowed_authors
+            )
+
+            # Prefer emails that the source can link to an author; parse a PDF
+            # only when metadata doesn't yield a valid contact.
+            if metadata_contacts:
+                item.pop("pdf_bytes", None)
+                if file_path:
+                    pending_pdf_cleanup.append(file_path)
+                    _cleanup_processed_pdfs()
+            else:
+                pdf_bytes = item.pop("pdf_bytes", None)
+                is_pdf = False
+                if isinstance(pdf_bytes, bytearray):
+                    pdf_bytes = bytes(pdf_bytes)
+                if isinstance(pdf_bytes, bytes):
                     is_pdf = pdf_bytes.startswith(b"%PDF-")
-                except OSError:
-                    pass
-                finally:
-                    # Fetchers still use path-based download helpers. In the
-                    # default mode, move the bytes into memory and remove the
-                    # temporary artifact before parsing or processing results.
-                    if not keep_pdf_files:
-                        try:
-                            os.remove(file_path)
-                        except OSError:
-                            pass
-            if is_pdf:
-                pdfs_downloaded += 1
-                pairs = extract_author_email_pairs(pdf_bytes, item.get("authors", []))
-                pdfs_parsed += 1
-                for author, email in pairs:
-                    clean_email = clean_and_validate_email(email)
-                    if not clean_email or clean_email in seen_emails:
-                        continue
-                    if not contact_allowed(author, allowed_authors) or not is_valid_author(author) or not is_valid_title(paper_title):
-                        continue
-                    pair_key = (paper_title.lower(), author.strip().lower())
-                    if clean_email in dedup_emails or pair_key in dedup_pairs:
-                        continue
-                    pending_rows.append({
-                        "Paper Title": paper_title,
-                        "Author Name": author.strip(),
-                        "Email ID": clean_email,
-                    })
-                    seen_emails.add(clean_email)
-                    if len(rows) + len(pending_rows) >= max_papers:
-                        return True
+                elif file_path and os.path.isfile(file_path):
+                    try:
+                        with open(file_path, "rb") as pdf_file:
+                            pdf_bytes = pdf_file.read()
+                        is_pdf = pdf_bytes.startswith(b"%PDF-")
+                    except OSError as read_error:
+                        log.warning(
+                            f"[Task {short_id}] Could not read downloaded PDF "
+                            f"{file_path}: {read_error}"
+                        )
+                if is_pdf:
+                    pdfs_downloaded += 1
+                    try:
+                        pairs = extract_author_email_pairs(pdf_bytes, item.get("authors", []))
+                        _queue_contact_pairs(pairs, paper_title, allowed_authors)
+                    finally:
+                        if file_path:
+                            pending_pdf_cleanup.append(file_path)
+                        pdfs_parsed += 1
+                        if pdfs_parsed % 2 == 0:
+                            _cleanup_processed_pdfs()
+                elif file_path:
+                    pending_pdf_cleanup.append(file_path)
+                    _cleanup_processed_pdfs()
 
             if len(pending_rows) >= 5 or (len(rows) + len(pending_rows) >= max_papers):
                 _flush_pending()
@@ -885,7 +943,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     source_no_contact_pages[source_key] = 0
                     log.info(
                         f"[Task {short_id}] {source_label} yielded "
-                        f"{new_contacts} PDF-extracted contacts; prioritizing it for top-up."
+                        f"{new_contacts} verified contacts; prioritizing it for top-up."
                     )
                 _flush_pending()
                 task_update(
@@ -1054,7 +1112,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         # Exact target capping: Return up to max_papers
         rows = final_strict_rows[:max_papers]
 
-        log.info(f"[Task {short_id}] Extraction complete: {len(rows)}/{max_papers} PDF-extracted contacts")
+        log.info(f"[Task {short_id}] Extraction complete: {len(rows)}/{max_papers} verified contacts")
 
         if not rows:
             if doi_skipped_count > 0 and doi_skipped_count == total_downloaded:
@@ -1068,7 +1126,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                     f"Remaining papers had no valid author names with verified emails."
                 )
             else:
-                message = f"Source exhaustion: found 0 of {max_papers} requested unique PDF-extracted contacts for '{topic}'."
+                message = f"Source exhaustion: found 0 of {max_papers} requested unique verified contacts for '{topic}'."
             task_update(task_id, "done", "", result={
                 "success": False,
                 "message": message,
@@ -1083,7 +1141,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
         total_found = len(rows)
         task_update(
             task_id, "running",
-            f"Finalizing {total_found}/{max_papers} PDF-extracted contacts...",
+            f"Finalizing {total_found}/{max_papers} verified contacts...",
             percentage=95, contacts_found=total_found
         )
         log.info(f"[Task {short_id}] Done. {len(rows)} verified records extracted.")
@@ -1092,7 +1150,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             "total_records": len(rows),
             "requested_count": max_papers,
             "shortfall": max(0, max_papers - len(rows)),
-            "message": (f"Reached the requested {max_papers} unique PDF-extracted contacts." if len(rows) == max_papers else f"Source exhaustion: found {len(rows)} of {max_papers} requested unique PDF-extracted contacts."),
+            "message": (f"Reached the requested {max_papers} unique verified contacts." if len(rows) == max_papers else f"Source exhaustion: found {len(rows)} of {max_papers} requested unique verified contacts."),
             "download_file": None,
             "data": rows,
         }, percentage=100, contacts_found=len(rows))
@@ -1107,6 +1165,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
             "file": None,
         }, percentage=100, contacts_found=len(rows))
     finally:
+        _cleanup_processed_pdfs()
         for pdf_dir in task_pdf_dirs:
             try:
                 for filename in os.listdir(pdf_dir):

@@ -4,23 +4,23 @@
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
 [![UI Theme](https://img.shields.io/badge/Theme-Dark%20Maroon%20%26%20White-800020.svg)](https://tailwindcss.com/)
-[![Repositories](https://img.shields.io/badge/Sources-34%20Live%20Repositories-crimson.svg)](#-supported-academic--biomedical-repositories-34-platforms)
+[![Repositories](https://img.shields.io/badge/Sources-10%20Active%20Sources-crimson.svg)](#-active-web-app-sources)
 [![Author](https://img.shields.io/badge/Maintainer-Nitro--Builds--Yash-black.svg?logo=github)](https://github.com/Nitro-Builds-Yash)
 [![Affiliation](https://img.shields.io/badge/Affiliation-OMICS%20%26%20Pulsus-red.svg)](https://www.pulsus.com/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-**Pulsus MedScout** is a high-performance biomedical intelligence and author outreach platform engineered for **OMICS International** and **Pulsus Group**. It connects directly to **34 scientific repositories** to discover verified medical researchers, laboratory directors, and corresponding authors with strict institutional email validation and zero-tolerance Gmail filtering.
+**Pulsus MedScout** is a biomedical literature and author discovery platform for **OMICS International** and **Pulsus Group**. Its web app includes the 10 active sources in the upstream Email-Scraping registry, with strict institutional email validation and zero-tolerance Gmail filtering.
 
 ---
 
 ## 🌟 Key Features
 
-* **🌐 34 Federated Scientific Repositories:** Unified real-time extraction across 34 clinical, preprint, and global academic engines with master "Select All" and category grouping (Biomedical, Preprints, Global).
+* **🌐 10 active web-app sources:** Search PLOS, Europe PMC, eLife, OpenAlex, arXiv, bioRxiv/medRxiv, Crossref, PubMed, Frontiers, and AHA Journals.
 * **🎨 Dark Maroon & Crisp White Interface:** Refined dark obsidian-maroon aesthetic (`#0B0205`, `#15040B`), glowing ruby indicators, and high-contrast pure white typography.
 * **🛡️ Zero Gmail Policy & Quality Verification:** Excludes non-institutional domains (`@gmail.com`) to guarantee outreach deliverability to legitimate academic, university, and hospital departments.
 * **🔒 Strict 3-Field Completeness Guarantee:** Enforces an absolute 3-column data contract: **Paper Title**, **Author Name**, and **Email ID**. Any incomplete or missing field is filtered out automatically.
 * **📊 Direct Excel (.xlsx) & CSV Export:** Formatted Excel spreadsheets with auto-styled columns and instant clipboard copy.
-* **🧠 Ephemeral PDF Processing:** PDF bytes are parsed in memory and temporary PDF files are deleted after a task. Set `KEEP_DOWNLOADED_PDFS=1` to retain downloaded PDFs for debugging.
+* **🧠 Metadata-first contact extraction:** Uses source-provided email/author matches when available, then falls back to parsing PDFs. Any downloaded PDFs are processed in memory and removed during and after extraction.
 * **🌍 Geographic Scope & Document Filtering:**
   * **Geographic Scope & Country:** 36+ global countries with live search and "Select All" controls.
   * **Document Classification:** *Research Article*, *Case Reports*, *Brief Reports*, *Systematic Reports*.
@@ -30,44 +30,22 @@
 
 ---
 
-## 📚 Supported Academic & Biomedical Repositories (34 Platforms)
+## 📚 Active Web-App Sources
 
-| # | Repository | Category | API / Extraction Mode |
-|---|------------|----------|-----------------------|
-| 1 | **PLOS ONE** | Biomedical | Direct Search API |
-| 2 | **PubMed / NCBI** | Biomedical | Entrez eUtils (XML) |
-| 3 | **bioRxiv** | Preprints | Cold Spring Harbor REST API |
-| 4 | **medRxiv** | Preprints | Health Sciences Preprints API |
-| 5 | **Europe PMC** | Biomedical | EMBL-EBI REST API |
-| 6 | **arXiv.org** | Preprints | Cornell arXiv e-Print API |
-| 7 | **OpenAlex** | Global | Open Scholarly Graph (250M+ papers) |
-| 8 | **Semantic Scholar** | Global | AI Knowledge Graph API |
-| 9 | **Crossref** | Global | Official DOI Metadata Engine |
-| 10 | **eLife** | Biomedical | Open-Access Life Sciences API |
-| 11 | **Preprints.org** | Preprints | Multidisciplinary Preprints Engine |
-| 12 | **ScienceDirect** | Global | Elsevier Open-Access Feed |
-| 13 | **iMedPub Group** | Biomedical | Clinical & Medical Journals Engine |
-| 14 | **OSF Preprints** | Preprints | Center for Open Science API |
-| 15 | **ChemRxiv** | Preprints | Chemical Sciences Preprints |
-| 16 | **PeerJ** | Biomedical | Peer-Reviewed Biological Sciences |
-| 17 | **F1000Research** | Biomedical | Post-Publication Peer Review |
-| 18 | **DOAJ** | Global | Directory of Open Access Journals |
-| 19 | **BASE Search** | Global | Bielefeld Academic Search Engine |
-| 20 | **CORE OA** | Global | Global Research Aggregator |
-| 21 | **Zenodo** | Preprints | CERN Universal Repository |
-| 22 | **ResearchGate** | Global | Academic Publication Index |
-| 23 | **Frontiers** | Biomedical | Frontiers in Medicine & Science |
-| 24 | **MDPI** | Biomedical | Open Access Publisher Index |
-| 25 | **Hindawi** | Biomedical | Peer-Reviewed OA Journals |
-| 26 | **BioMed Central (BMC)**| Biomedical | Springer Nature BMC Engine |
-| 27 | **PMC (PubMed Central)**| Biomedical | Full-Text Biomedical Archive |
-| 28 | **Springer Open** | Global | Springer Nature Open Engine |
-| 29 | **Taylor & Francis** | Global | T&F Open Access Index |
-| 30 | **SSRN** | Preprints | Social Science & Health Preprints |
-| 31 | **EarthArXiv** | Preprints | Earth & Planetary Sciences |
-| 32 | **ESSOAr** | Preprints | Space & Earth Science Archive |
-| 33 | **SciELO** | Global | Latin America & Global Network |
-| 34 | **HAL Open Archive**| Global | French National Open Archive |
+| Source | Category | API / Extraction Mode |
+|--------|----------|-----------------------|
+| **PLOS** | Biomedical | Search API + PDF download |
+| **Europe PMC** | Biomedical | Full-text biomedical records and PDFs |
+| **eLife** | Biomedical | Life sciences search API + PDF |
+| **OpenAlex** | Global | Open scholarly graph and open-access PDFs |
+| **arXiv.org** | Preprints | Atom API + PDF download |
+| **bioRxiv / medRxiv** | Preprints | Crossref metadata and preprint PDFs |
+| **Crossref** | Global | DOI metadata with open-PDF discovery |
+| **PubMed / NCBI** | Biomedical | Entrez metadata and full-text PDF discovery |
+| **Frontiers** | Biomedical | Frontiers-filtered Europe PMC records |
+| **AHA Journals** | Biomedical | AHA-filtered Europe PMC records |
+
+These are the active sources registered by the upstream project; API availability and PDF access can vary by query and rate limits.
 
 ---
 
@@ -79,7 +57,7 @@ flowchart TD
     B -->|"Web UI (Port 5000)"| C["Flask Server (Pulsus MedScout)"]
     B -->|"Headless CLI"| D["cli.py"]
     
-    C --> E["Fetcher Registry (34 Repositories)"]
+    C --> E["Web Fetcher Registry (10 Active Sources)"]
     D --> E
     
     E --> F["Parallel Multi-Engine Search"]
@@ -152,7 +130,7 @@ OPENROUTER_MODEL=google/gemini-2.0-flash-001
 
 If no API keys are provided, Pulsus MedScout runs fully autonomously using its built-in regex and layout heuristic engine.
 
-Downloaded PDFs are processed in memory and removed from the task's temporary source folders by default. To keep them for debugging, set `KEEP_DOWNLOADED_PDFS=1` in the environment before starting the app.
+Downloaded PDFs are processed in memory and removed from the task's temporary source folders during and after extraction.
 
 ---
 

@@ -2,14 +2,16 @@
 const $ = id => document.getElementById(id);
 const form = $('extractForm');
 const sources = [
-  { num: 1, id: 'pubmed', name: 'PubMed / NCBI', category: 'Biomedical', mode: 'NCBI Entrez search with PDF-backed full text', checked: true },
-  { num: 2, id: 'europepmc', name: 'Europe PMC', category: 'Biomedical', mode: 'Europe PMC open-access PDF API', checked: true },
-  { num: 3, id: 'plos', name: 'PLOS ONE', category: 'Biomedical', mode: 'PLOS search API + direct PDF', checked: false },
-  { num: 4, id: 'elife', name: 'eLife', category: 'Biomedical', mode: 'eLife search API + direct PDF', checked: false },
-  { num: 5, id: 'arxiv', name: 'arXiv.org', category: 'Preprints', mode: 'arXiv Atom API + direct PDF', checked: false },
-  { num: 6, id: 'biorxiv', name: 'bioRxiv / medRxiv', category: 'Preprints', mode: 'Preprint records + verified PDF', checked: false },
-  { num: 7, id: 'frontiers', name: 'Frontiers', category: 'Biomedical', mode: 'Europe PMC open-access PDF records', checked: false },
-  { num: 8, id: 'ahajournals', name: 'AHA Journals', category: 'Biomedical', mode: 'Europe PMC open-access PDF records', checked: false }
+  { num: 1, id: 'plos', name: 'PLOS', category: 'Biomedical', mode: 'Public Library of Science search + PDF', checked: true },
+  { num: 2, id: 'europepmc', name: 'Europe PMC', category: 'Biomedical', mode: 'Full-text biomedical records + PDFs', checked: true },
+  { num: 3, id: 'elife', name: 'eLife', category: 'Biomedical', mode: 'Life sciences and medicine search + PDF', checked: true },
+  { num: 4, id: 'openalex', name: 'OpenAlex', category: 'Global', mode: 'Global open-access research index', checked: true },
+  { num: 5, id: 'arxiv', name: 'arXiv.org', category: 'Preprints', mode: 'Cornell University research archive', checked: true },
+  { num: 6, id: 'biorxiv', name: 'bioRxiv / medRxiv', category: 'Preprints', mode: 'CSHL biology and medicine research', checked: true },
+  { num: 7, id: 'crossref', name: 'Crossref', category: 'Global', mode: 'Multi-publisher DOI network', checked: true },
+  { num: 8, id: 'pubmed', name: 'PubMed / NCBI', category: 'Biomedical', mode: 'NCBI biomedical literature index', checked: true },
+  { num: 9, id: 'frontiers', name: 'Frontiers', category: 'Biomedical', mode: 'Frontiers publications via Europe PMC', checked: true },
+  { num: 10, id: 'aha', name: 'AHA Journals', category: 'Biomedical', mode: 'AHA publications via Europe PMC', checked: true }
 ];
 let records = [], running = false, toastTimer;
 for (const src of sources) {
@@ -105,7 +107,7 @@ for (const [id, checked] of [['selectSources', true], ['clearSources', false]]) 
 }
 if ($('selectFastSources')) {
   $('selectFastSources').addEventListener('click', () => {
-    const fastSources = new Set(['pubmed', 'europepmc', 'plos', 'elife']);
+    const fastSources = new Set(['plos', 'europepmc', 'elife', 'openalex', 'crossref', 'pubmed']);
     for (const el of form.querySelectorAll('[name="source_sites[]"]')) {
       el.checked = fastSources.has(el.value);
     }
@@ -240,7 +242,7 @@ form.addEventListener('submit', async event => {
       const percentage = Math.max(0, Math.min(100, Number(status.percentage) || 0));
       $('statusText').textContent = status.progress || 'Searching selected repositories…';
       $('percentage').textContent = `${percentage}%`; $('progressBar').style.width = `${percentage}%`;
-      $('progressDetail').textContent = `${status.contacts_found || 0} / ${status.requested_count || 0} unique PDF contacts · ${status.papers_searched || 0} papers · ${status.pdfs_parsed || 0} PDFs parsed · ${status.sources_remaining || 0} sources left`;
+      $('progressDetail').textContent = `${status.contacts_found || 0} / ${status.requested_count || 0} unique verified contacts · ${status.papers_searched || 0} papers · ${status.pdfs_parsed || 0} PDFs parsed · ${status.sources_remaining || 0} sources left`;
 
       // Live Elapsed & ETA update
       const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
@@ -263,7 +265,7 @@ form.addEventListener('submit', async event => {
         if (status.status === 'error') { message(result.message || 'Search failed. Try fewer repositories.'); $('statusTag').textContent = 'Search interrupted'; }
         return;
       }
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   } catch (error) { message(error.message); setBusy(false); $('progressBox').hidden = true; $('emptyState').hidden = false; $('statusTag').textContent = 'Search interrupted'; }
 });

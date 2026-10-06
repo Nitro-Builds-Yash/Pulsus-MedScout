@@ -4,6 +4,7 @@ import logging
 import requests
 
 from .http_client import POLITE_USER_AGENT, polite_jitter
+from .country_filter import resolve_email_author
 
 log = logging.getLogger("extraction.europepmc")
 
@@ -102,12 +103,53 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
         doi          = item.get("doi", "N/A")
         title        = item.get("title", "Untitled").rstrip(".")
         author_string= item.get("authorString", "")
-        authors_meta = [a.strip() for a in author_string.split(",") if a.strip()]
+        author_list_obj = item.get("authorList", {})
+        author_entries = (
+            author_list_obj.get("author", [])
+            if isinstance(author_list_obj, dict) else []
+        )
+        authors_meta = []
+        author_affiliations = {}
+        email_author_candidates = {}
+        for author in author_entries:
+            name = " ".join(
+                part.strip()
+                for part in (author.get("firstName", ""), author.get("lastName", ""))
+                if part and part.strip()
+            ) or author.get("fullName", "").strip()
+            if name:
+                authors_meta.append(name)
+            details = author.get("authorAffiliationDetailsList", {})
+            author_affs = (
+                details.get("authorAffiliation", [])
+                if isinstance(details, dict) else []
+            )
+            for aff_obj in author_affs:
+                aff_str = aff_obj.get("affiliation", "")
+                if name and aff_str:
+                    author_affiliations.setdefault(name, []).append(aff_str)
+                if name:
+                    for email in re.findall(
+                        r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+',
+                        aff_str,
+                    ):
+                        clean_email = email.strip().rstrip(".").lower()
+                        email_author_candidates.setdefault(clean_email, set()).add(name)
+        email_authors = {
+            email: next(iter(names))
+            for email, names in email_author_candidates.items()
+            if len(names) == 1
+        }
+        ambiguous_emails = [
+            email for email, names in email_author_candidates.items()
+            if len(names) > 1
+        ]
+        if not authors_meta:
+            authors_meta = [a.strip() for a in author_string.split(",") if a.strip()]
         source_journal = item.get("journalTitle", "Europe PMC") or "Europe PMC"
 
         # 1. Pre-extract any emails present in author affiliations
         found_emails = []
-        author_list_obj = item.get("authorList", {})
         if isinstance(author_list_obj, dict):
             for auth in author_list_obj.get("author", []):
                 aff_details = auth.get("authorAffiliationDetailsList", {})
@@ -125,7 +167,25 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
                 if clean not in found_emails:
                     found_emails.append(clean)
 
-        # The worker counts only contacts extracted from a real PDF.
+        record = {
+            "title": title,
+            "authors": authors_meta,
+            "doi": doi,
+            "source_journal": source_journal,
+            "emails": found_emails,
+            "email_authors": email_authors,
+            "ambiguous_emails": ambiguous_emails,
+            "author_affiliations": author_affiliations,
+        }
+
+        # Use author-linked affiliation emails directly instead of downloading
+        # and parsing a PDF when the source metadata is sufficient.
+        if any(resolve_email_author(record, email) for email in found_emails):
+            saved += 1
+            records.append(record)
+            polite_jitter()
+            continue
+
         pdf_urls = []
         if pmcid:
             pdf_urls.append(f"https://europepmc.org/backend/ptpmcrender.fcgi?accid={pmcid}&blobtype=pdf")
@@ -153,18 +213,12 @@ def fetch_europepmc_papers(topic, limit, target_dir, filters=None, page=1, offse
             except Exception as e:
                 log.debug(f"[EuropePMC] Download failed ({url}): {e}")
 
-        # If PDF succeeded, record this paper
+        # Fall back to PDF parsing when metadata cannot identify an author.
         if download_success:
             saved += 1
-            records.append({
-                "title":          title,
-                "authors":        authors_meta,
-                "doi":            doi,
-                "source_journal": source_journal,
-                "emails":         found_emails,
-                "file_path":      file_path,
-                "pdf_name":       pdf_name,
-            })
+            record["file_path"] = file_path
+            record["pdf_name"] = pdf_name
+            records.append(record)
 
         polite_jitter()
 

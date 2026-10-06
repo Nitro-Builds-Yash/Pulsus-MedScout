@@ -14,8 +14,8 @@ def test_every_ui_source_has_a_backend_connector():
     ui_sources = set(re.findall(r"\bid:\s*'([a-zA-Z0-9_]+)'", workspace))
     assert ui_sources == set(app.SOURCE_FETCHERS)
     assert ui_sources == {
-        "pubmed", "europepmc", "plos", "elife",
-        "arxiv", "biorxiv", "frontiers", "ahajournals",
+        "plos", "europepmc", "elife", "openalex", "arxiv",
+        "biorxiv", "crossref", "pubmed", "frontiers", "aha",
     }
 
 

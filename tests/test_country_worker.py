@@ -104,7 +104,7 @@ def test_zero_contact_first_page_does_not_exhaust_source(worker, monkeypatch, tm
     calls = []
     metadata_only = {
         'title': 'Metadata only paper', 'doi': '10.1000/meta',
-        'authors': ['Jane Smith'], 'emails': ['jsmith@college.edu'],
+        'authors': ['Jane Smith'], 'emails': ['unrelated@college.edu'],
     }
 
     def fetcher(*args, **kwargs):
@@ -156,11 +156,48 @@ def test_worker_removes_pdf_and_does_not_create_excel(worker, monkeypatch, tmp_p
     assert result['download_file'] is None
 
 
+def test_worker_removes_processed_pdfs_in_pairs(worker, monkeypatch, tmp_path):
+    pdf_paths = []
+
+    def source(topic, limit, target_dir, **kwargs):
+        papers = []
+        for number in range(1, 4):
+            pdf_path = Path(target_dir) / f'pair-{number}.pdf'
+            pdf_path.write_bytes(f'%PDF-1.4 temporary {number}'.encode())
+            pdf_paths.append(pdf_path)
+            papers.append({
+                'title': f'Cancer research pair {number}',
+                'doi': f'10.1000/pair-{number}',
+                'authors': [f'Jane Pair{number}'],
+                'file_path': str(pdf_path),
+            })
+        return papers
+
+    extraction_states = []
+
+    def extract_pairs(_pdf_bytes, _authors):
+        extraction_states.append([path.exists() for path in pdf_paths])
+        number = len(extraction_states)
+        return [(f'Jane Pair{number}', f'pair{number}@college.edu')]
+
+    monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', source)})
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', extract_pairs)
+
+    worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 3, {})
+
+    assert extraction_states == [
+        [True, True, True],
+        [True, True, True],
+        [False, False, True],
+    ]
+    assert all(not path.exists() for path in pdf_paths)
+
+
 def test_metadata_only_and_non_pdf_records_are_not_counted(worker, monkeypatch, tmp_path):
     record = {'title': 'Metadata only paper', 'doi': '10.1000/meta',
-              'authors': ['Jane Smith'], 'emails': ['jsmith@college.edu']}
+              'authors': ['Jane Smith'], 'emails': ['unrelated@college.edu']}
     fake = tmp_path / 'not-a-pdf.pdf'
-    fake.write_text('HTML metadata jsmith@college.edu')
+    fake.write_text('HTML metadata unrelated@college.edu')
     record['file_path'] = str(fake)
     monkeypatch.setattr(worker, 'SOURCE_FETCHERS', {'pubmed': ('PubMed', lambda *a, **kw: [record])})
     worker._run_extraction_task('country-test', ['pubmed'], 'cancer', 1, {})
@@ -169,6 +206,33 @@ def test_metadata_only_and_non_pdf_records_are_not_counted(worker, monkeypatch, 
     assert result['data'] == []
     assert result['shortfall'] == 1
     worker.save_new_emails_to_master.assert_not_called()
+
+
+def test_worker_uses_author_linked_metadata_without_parsing_pdf(worker, monkeypatch, tmp_path):
+    pdf_path = tmp_path / 'metadata-first.pdf'
+    pdf_path.write_bytes(b'%PDF-1.4 should not be parsed')
+    record = {
+        'title': 'Metadata contact study',
+        'doi': '10.1000/metadata-first',
+        'authors': ['Jane Smith'],
+        'emails': ['jane.smith@college.edu'],
+        'email_authors': {'jane.smith@college.edu': 'Jane Smith'},
+        'file_path': str(pdf_path),
+    }
+    monkeypatch.setattr(
+        worker, 'SOURCE_FETCHERS',
+        {'metadata': ('Metadata source', lambda *args, **kwargs: [record])},
+    )
+    parse_pdf = Mock(side_effect=AssertionError('PDF parser should not be needed'))
+    monkeypatch.setattr(worker, 'extract_author_email_pairs', parse_pdf)
+
+    worker._run_extraction_task('country-test', ['metadata'], 'cancer', 1, {})
+
+    result = worker.TASKS['country-test']['result']
+    assert result['success']
+    assert result['data'][0]['Email ID'] == 'jane.smith@college.edu'
+    parse_pdf.assert_not_called()
+    assert not pdf_path.exists()
 
 
 def test_email_on_later_pdf_page_is_extracted(worker, monkeypatch, tmp_path):
@@ -226,7 +290,7 @@ def test_small_target_uses_small_batch_and_stops_at_target(worker, monkeypatch, 
     result = worker.TASKS['country-test']['result']
     assert result['success']
     assert len(result['data']) == 1
-    assert selected_fetch.call_args.args[1] == 5
+    assert selected_fetch.call_args.args[1] == 1
     later_fetch.assert_not_called()
 
 
@@ -335,7 +399,7 @@ def test_productive_source_is_topped_up_before_fallback(worker, monkeypatch, tmp
     result = worker.TASKS['country-test']['result']
 
     assert result['success']
-    assert productive_calls == [None, 5]
+    assert productive_calls == [None, 2]
     fallback_source.assert_not_called()
 
 
@@ -372,7 +436,7 @@ def test_short_page_advances_by_requested_window(worker, monkeypatch, tmp_path):
     assert result['success']
     assert len(result['data']) == 2
     assert calls[0].get('offset', 0) == 0
-    assert calls[1]['offset'] == 5
+    assert calls[1]['offset'] == 1
 
 
 @pytest.mark.parametrize('data', [

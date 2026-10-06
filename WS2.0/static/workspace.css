@@ -504,6 +504,45 @@ h1 em {
   transform: translateY(-1px);
 }
 
+.medical-icon-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.medical-icon-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid rgba(225, 29, 72, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--panel-bg), var(--panel-elevated));
+  color: var(--ink-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  box-shadow: 0 5px 16px rgba(44, 12, 25, 0.04);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.medical-icon-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(225, 29, 72, 0.42);
+  box-shadow: 0 8px 20px rgba(225, 29, 72, 0.1);
+}
+
+.medical-icon-card svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .engine-badge.highlight {
   border-color: rgba(225, 29, 72, 0.45);
   background: rgba(255, 255, 255, 0.75);
@@ -1946,6 +1985,11 @@ td:first-child {
 }
 
 @media(prefers-reduced-motion: reduce) {
+  .medical-icon-card,
+  .medical-icon-card:hover {
+    transition: none;
+    transform: none;
+  }
   * {
     transition: none !important;
     scroll-behavior: auto !important;
