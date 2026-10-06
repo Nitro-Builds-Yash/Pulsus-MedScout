@@ -16,6 +16,7 @@
 ## 🌟 Key Features
 
 * **🌐 10 active web-app sources:** Search PLOS, Europe PMC, eLife, OpenAlex, arXiv, bioRxiv/medRxiv, Crossref, PubMed, Frontiers, and AHA Journals.
+* **⚡ Concurrent independent searches:** Run up to five separate extraction jobs at once; each job still respects source request pacing and source priority.
 * **🎨 Dark Maroon & Crisp White Interface:** Refined dark obsidian-maroon aesthetic (`#0B0205`, `#15040B`), glowing ruby indicators, and high-contrast pure white typography.
 * **🛡️ Zero Gmail Policy & Quality Verification:** Excludes non-institutional domains (`@gmail.com`) to guarantee outreach deliverability to legitimate academic, university, and hospital departments.
 * **🔒 Strict 3-Field Completeness Guarantee:** Enforces an absolute 3-column data contract: **Paper Title**, **Author Name**, and **Email ID**. Any incomplete or missing field is filtered out automatically.

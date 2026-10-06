@@ -446,3 +446,58 @@ def test_short_page_advances_by_requested_window(worker, monkeypatch, tmp_path):
 def test_invalid_filters_rejected_before_start(data):
     response = application.app.test_client().post('/start-extraction', data=data)
     assert response.status_code == 400
+
+
+def test_start_extraction_allows_five_concurrent_tasks(monkeypatch, tmp_path):
+    leases = []
+
+    class DeferredThread:
+        def __init__(self, target, args, daemon):
+            self.args = args
+
+        def start(self):
+            leases.append(self.args[-1])
+
+    monkeypatch.setattr(application, 'LOCK_FILE_PREFIX', str(tmp_path / 'extraction_'))
+    monkeypatch.setattr(application, 'DATA_LOCK_FILE', str(tmp_path / 'data.lock'))
+    thread_stub = type('ThreadingStub', (), {'Thread': DeferredThread})()
+    monkeypatch.setattr(application, 'threading', thread_stub)
+    client = application.app.test_client()
+
+    responses = [
+        client.post('/start-extraction', data={'topic': f'topic-{index}'})
+        for index in range(application.MAX_CONCURRENT_EXTRACTIONS)
+    ]
+
+    assert all(response.status_code == 200 for response in responses)
+    assert len(set(lease[0] for lease in leases)) == application.MAX_CONCURRENT_EXTRACTIONS
+    assert client.post('/start-extraction', data={'topic': 'sixth'}).status_code == 429
+
+    for lease in leases:
+        application._release_extraction_lock(lease)
+
+
+def test_concurrent_master_csv_appends_are_not_lost(monkeypatch, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    master_file = tmp_path / 'master.csv'
+    attempted_file = tmp_path / 'attempted.txt'
+    monkeypatch.setattr(application, 'MASTER_EMAIL_FILE', str(master_file))
+    monkeypatch.setattr(application, 'ATTEMPTED_DOIS_FILE', str(attempted_file))
+    monkeypatch.setattr(application, 'DATA_LOCK_FILE', str(tmp_path / 'data.lock'))
+    rows = [
+        {'Paper Title': f'Paper {index}', 'Author Name': f'Author {index}',
+         'Email ID': f'author{index}@university.edu'}
+        for index in range(40)
+    ]
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(application.save_new_emails_to_master, ([row] for row in rows)))
+
+    saved = application.pd.read_csv(master_file, encoding='utf-8-sig')
+    assert len(saved) == len(rows)
+    assert set(saved['Email ID']) == {row['Email ID'] for row in rows}
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(application._record_attempted_doi, (f'10.1234/{i}' for i in range(40))))
+    assert len(attempted_file.read_text(encoding='utf-8').splitlines()) == 40

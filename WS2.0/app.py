@@ -6,6 +6,7 @@ import time
 import uuid
 import threading
 import logging
+from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 import pdfplumber
 import pandas as pd
@@ -71,77 +72,95 @@ log = logging.getLogger("extraction")
 # Maps task_id -> {"status": ..., "progress": ..., "result": ...}
 TASKS = {}
 TASKS_LOCK = threading.Lock()
-
-# Intra-process concurrency guard (one extraction per worker thread)
-_INTRA_PROCESS_LOCK = threading.Lock()
+_DATA_LOCK = threading.RLock()
+DATA_LOCK_FILE = os.path.join(DOWNLOADS_DIR, "data.lock")
 
 # -----------------------------------------------------------
-# Filesystem Lock — ISSUE-12
-# Cross-process lock using a timestamp-stamped lock file.
-# Works correctly under multi-worker WSGI (gunicorn --workers N).
-# The threading lock handles same-process races; the file lock
-# handles cross-process races on the master_email_list.csv.
+# Extraction capacity
 # -----------------------------------------------------------
-LOCK_FILE = os.path.join(DOWNLOADS_DIR, "extraction.lock")
-_LOCK_TTL_SECONDS = 300  # 5 minutes — prevent interrupted tasks from wedging the server
+MAX_CONCURRENT_EXTRACTIONS = 5
+LOCK_FILE_PREFIX = os.path.join(DOWNLOADS_DIR, "extraction_")
+
+
+@contextmanager
+def _shared_data_lock():
+    """Serialize shared data-file access in this process and across workers."""
+    with _DATA_LOCK:
+        with open(DATA_LOCK_FILE, "a+b") as lock:
+            lock.seek(0, os.SEEK_END)
+            if lock.tell() == 0:
+                lock.write(b"\0")
+                lock.flush()
+            lock.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    yield
+                finally:
+                    lock.seek(0)
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 def _acquire_extraction_lock():
-    """
-    Acquire the two-layer extraction lock:
-      Layer 1: threading.Lock — prevents races within the same process.
-      Layer 2: filesystem lock file — prevents races across processes.
-
-    Returns True if the lock was acquired, False if it is already held.
-    """
-    # Layer 1: fast intra-process check
-    if not _INTRA_PROCESS_LOCK.acquire(blocking=False):
-        return False
-
-    # Layer 2: cross-process file lock
-    if os.path.exists(LOCK_FILE):
+    """Reserve one of the bounded, cross-process extraction slots."""
+    for slot in range(MAX_CONCURRENT_EXTRACTIONS):
+        lock_file = f"{LOCK_FILE_PREFIX}{slot}.lock"
+        token = uuid.uuid4().hex
         try:
-            with open(LOCK_FILE, "r") as f:
-                timestamp = float(f.read().strip() or "0")
-            age = time.time() - timestamp
-            if age < _LOCK_TTL_SECONDS:
-                # Live lock held by another process — reject
-                _INTRA_PROCESS_LOCK.release()
-                return False
-            # Stale lock — clear it and proceed
-            log.warning(
-                f"[Lock] Stale extraction.lock found (age {age / 60:.0f} min). Clearing."
-            )
-            os.remove(LOCK_FILE)
-        except Exception as e:
-            log.warning(f"[Lock] Could not read lock file: {e}. Clearing and proceeding.")
+            descriptor = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
             try:
-                os.remove(LOCK_FILE)
-            except Exception:
+                with open(lock_file, "r", encoding="utf-8") as existing:
+                    owner_pid = int(existing.readline().strip())
+                try:
+                    os.kill(owner_pid, 0)
+                except PermissionError:
+                    continue
+                except OSError:
+                    os.remove(lock_file)
+                    descriptor = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                else:
+                    continue
+            except (OSError, ValueError):
+                # An unreadable or concurrently claimed slot is treated as busy.
+                continue
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as lock:
+                lock.write(f"{os.getpid()}\n{token}\n")
+        except OSError:
+            try:
+                os.remove(lock_file)
+            except OSError:
                 pass
+            log.exception("[Lock] Failed to write extraction slot.")
+            return None
+        return lock_file, token
+    return None
 
+
+def _release_extraction_lock(lease):
+    """Release a slot only if it is still owned by this task."""
+    if not lease:
+        return
+    lock_file, token = lease
     try:
-        with open(LOCK_FILE, "w") as f:
-            f.write(str(time.time()))
-    except Exception as e:
-        log.error(f"[Lock] Failed to write lock file: {e}")
-        _INTRA_PROCESS_LOCK.release()
-        return False
-
-    return True
-
-
-def _release_extraction_lock():
-    """Release the filesystem lock and the intra-process threading lock."""
-    try:
-        if os.path.exists(LOCK_FILE):
-            os.remove(LOCK_FILE)
-    except Exception as e:
-        log.warning(f"[Lock] Could not remove lock file: {e}")
-    try:
-        _INTRA_PROCESS_LOCK.release()
-    except RuntimeError:
-        pass  # Already released — safe to ignore
+        with open(lock_file, "r", encoding="utf-8") as lock:
+            lock.readline()
+            current_token = lock.readline().strip()
+        if current_token == token:
+            os.remove(lock_file)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        log.exception("[Lock] Could not release extraction slot %s.", lock_file)
 
 
 def _cleanup_stale_tasks():
@@ -223,6 +242,12 @@ def normalise_doi(raw):
 
 
 def load_seen_data():
+    """Read shared deduplication files without racing another task's writes."""
+    with _shared_data_lock():
+        return _load_seen_data()
+
+
+def _load_seen_data():
     """
     Load the set of all previously scraped emails AND DOIs from:
       1. master_email_list.csv  (emails + DOIs of extracted papers)
@@ -275,8 +300,9 @@ def _record_attempted_doi(doi_key):
     if not doi_key:
         return
     try:
-        with open(ATTEMPTED_DOIS_FILE, "a", encoding="utf-8") as f:
-            f.write(doi_key + "\n")
+        with _shared_data_lock():
+            with open(ATTEMPTED_DOIS_FILE, "a", encoding="utf-8") as f:
+                f.write(doi_key + "\n")
     except Exception as e:
         log.warning(f"[Dedup] Could not write attempted_dois.txt: {e}")
 
@@ -298,18 +324,28 @@ def save_new_emails_to_master(new_rows):
     for col in cols:
         if col not in new_df.columns:
             new_df[col] = ""
-    new_df = new_df[cols]
-    file_is_empty = (
-        not os.path.exists(MASTER_EMAIL_FILE)
-        or os.path.getsize(MASTER_EMAIL_FILE) == 0
-    )
-    new_df.to_csv(
-        MASTER_EMAIL_FILE,
-        mode="a",
-        index=False,
-        header=file_is_empty,
-        encoding="utf-8-sig",
-    )
+    new_df = new_df[cols].drop_duplicates(subset=["Email ID"], keep="first")
+    with _shared_data_lock():
+        file_is_empty = (
+            not os.path.exists(MASTER_EMAIL_FILE)
+            or os.path.getsize(MASTER_EMAIL_FILE) == 0
+        )
+        if not file_is_empty:
+            existing = pd.read_csv(MASTER_EMAIL_FILE, encoding="utf-8-sig")
+            if "Email ID" in existing.columns:
+                seen = set(existing["Email ID"].dropna().str.lower())
+                new_df = new_df[
+                    ~new_df["Email ID"].str.lower().isin(seen)
+                ].drop_duplicates(subset=["Email ID"], keep="first")
+        if new_df.empty:
+            return
+        new_df.to_csv(
+            MASTER_EMAIL_FILE,
+            mode="a",
+            index=False,
+            header=file_is_empty,
+            encoding="utf-8-sig",
+        )
 
 
 # -----------------------------------------------------------
@@ -586,7 +622,7 @@ def is_valid_title(title):
 # -----------------------------------------------------------
 # Background Extraction Worker
 # -----------------------------------------------------------
-def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None):
+def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None, lock_lease=None):
     """
     Runs extraction across one or multiple repositories.
     Strictly yields rows with: 'Paper Title', 'Author Name', 'Email ID'.
@@ -1185,7 +1221,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None)
                         f"[Task {short_id}] Could not remove temporary PDF directory "
                         f"{pdf_dir}: {cleanup_error}"
                     )
-        _release_extraction_lock()
+        _release_extraction_lock(lock_lease)
         _cleanup_stale_tasks()
 
 
@@ -1239,9 +1275,10 @@ def start_extraction():
     if filters["year_from"] and filters["year_to"] and filters["year_from"] > filters["year_to"]:
         return jsonify({"error": "The start year must be before the end year."}), 400
 
-    if not _acquire_extraction_lock():
+    lock_lease = _acquire_extraction_lock()
+    if not lock_lease:
         return jsonify({
-            "error": "An extraction is already in progress. Please wait for it to finish."
+            "error": f"All {MAX_CONCURRENT_EXTRACTIONS} extraction slots are busy. Please try again shortly."
         }), 429
 
     task_id = str(uuid.uuid4())
@@ -1260,10 +1297,16 @@ def start_extraction():
 
     thread = threading.Thread(
         target=_run_extraction_task,
-        args=(task_id, valid_sources, topic, max_papers, filters),
+        args=(task_id, valid_sources, topic, max_papers, filters, lock_lease),
         daemon=True,
     )
-    thread.start()
+    try:
+        thread.start()
+    except RuntimeError:
+        _release_extraction_lock(lock_lease)
+        task_update(task_id, "error", "Could not start extraction worker.")
+        log.exception("[Task %s] Could not start extraction worker.", task_id[:8])
+        return jsonify({"error": "Could not start extraction worker."}), 500
     log.info(
         f"[Task {task_id[:8]}] Queued: sources={valid_sources}, "
         f"topic='{topic}', max={max_papers}, filters={filters}"
