@@ -5,82 +5,47 @@
   <title>MedScout · Research workspace</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='workspace.css') }}"><script defer src="{{ url_for('static', filename='workspace.js') }}"></script>
 </head>
 <body>
   <aside class="sidebar">
     <a class="brand" href="/" aria-label="Pulsus MedScout home">
-      <span class="brand-mark" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--maroon-light)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></span>
-      <span class="brand-copy">
-        <span class="brand-primary">Pulsus</span>
-        <small>OMICS INTERNATIONAL</small>
-        <svg class="brand-lifeline" viewBox="0 0 180 24" role="img" aria-label="Heartbeat lifeline">
-          <path d="M1 12h43l8-1 7-8 9 17 9-19 10 22 9-11h83"/>
-        </svg>
-      </span>
+      <img class="brand-logo" src="https://www.pulsus.com/images/pulsus-logo-red.svg" alt="Pulsus">
     </a>
     <div class="side-label">YOUR WORKSPACE</div>
     <a href="#workspace" class="nav-item active"><span class="nav-symbol">⌕</span> Literature search <span class="nav-arrow">↗</span></a>
     <a href="#results" class="nav-item"><span class="nav-symbol">≡</span> Search results <span class="side-count" id="navCount">0</span></a>
-    <div class="side-note"><span class="side-label">BUILT FOR RESEARCH</span><p>Pulsus Group<br>OMICS International</p><div class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-    <div class="sidebar-footer"><span class="avatar">P</span><div>Pulsus Group<small>OMICS International</small></div></div>
+    <div class="side-note"><span class="side-label">BUILT FOR RESEARCH</span><p>Pulsus Group</p><div class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="sidebar-footer"><span class="avatar">P</span><div>Pulsus Group</div></div>
   </aside>
   <div class="page" id="workspace">
-    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span>Literature search</div><span class="edition">PULSUS <b>OMICS INTERNATIONAL · RESEARCH EDITION</b></span></header>
+    <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span>Literature search</div><span class="edition">PULSUS <b>RESEARCH EDITION</b></span></header>
     <main>
       <section class="intro">
         <div class="intro-main">
           <div class="eyebrow"><span class="pulse-ruby"></span> 10 ACTIVE SOURCES · SCHOLARLY RESEARCH PIPELINE</div>
           <h1>Biomedical Author &amp;<br><em>Literature Intelligence</em></h1>
           <p>Medical Email Scraping</p>
-          <div class="engine-badges-row">
-            <span class="engine-badge highlight"><span class="badge-dot ruby"></span> 10 Sources Available</span>
-            <span class="engine-badge"><span class="badge-dot emerald"></span> Verified Academic Affiliation</span>
-            <span class="engine-badge secure"><span class="badge-dot crimson"></span> University &amp; Hospital Domains</span>
-            <span class="engine-badge"><span class="badge-dot sapphire"></span> Multi-Tier DOI Deduplication</span>
-            <span class="engine-badge"><span class="badge-dot gold"></span> Strict 3-Col Data Contract</span>
-          </div>
-          <div class="medical-icon-strip" aria-label="Medical research tools">
-            <span class="medical-icon-card">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v5a5 5 0 0 0 10 0V3M5 3h4M15 3h4M12 13v2a4 4 0 0 0 8 0v-1"/><circle cx="20" cy="12" r="1.5"/></svg>
-              <span>Clinical research</span>
-            </span>
-            <span class="medical-icon-card">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-4.7-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.3-8 11-8 11Z"/><path d="M3 12h5l2-3 3.5 6 2-3H21"/></svg>
-              <span>Biomedical insight</span>
-            </span>
-            <span class="medical-icon-card">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3 6 6M7 5l4-4 6 6-4 4M8 8l8 8M14 14l4-4 3 3-4 4M4 20h16M7 17l3 3"/><circle cx="7" cy="12" r="2"/></svg>
-              <span>Literature discovery</span>
-            </span>
-          </div>
         </div>
         <div class="pulsus-enterprise-card">
           <div class="pulsus-card-header">
             <div class="pulsus-brand-badge">
-              <span class="pulsus-logo-dot"></span>
               <div>
                 <strong>PULSUS GROUP</strong>
                 <small>HEALTHCARE &amp; SCIENTIFIC PUBLISHER</small>
               </div>
             </div>
-            <span class="pulsus-established">EST. 1984</span>
           </div>
-          <div class="pulsus-stats-grid">
-            <div class="pulsus-stat">
-              <span class="p-num">50k+</span>
-              <span class="p-lbl">EDITORIAL BOARD LEADERS</span>
-            </div>
-            <div class="pulsus-stat">
-              <span class="p-num">1000+</span>
-              <span class="p-lbl">ANNUAL CONFERENCES</span>
-            </div>
-          </div>
-          <div class="pulsus-card-footer">
-            <span class="pulsus-focus-tag">Peer-Reviewed Journals</span>
-            <span class="pulsus-focus-tag">Clinical Symposia</span>
-            <span class="pulsus-focus-tag">Author Outreach</span>
+          <div class="pulsus-feature-box" aria-label="Research capabilities">
+            <span>10 Sources Available</span>
+            <span>Verified Academic Affiliation</span>
+            <span>University &amp; Hospital Domains</span>
+            <span>Multi-Tier DOI Deduplication</span>
+            <span>Strict 3-Col Data Contract</span>
+            <span>Clinical research</span>
+            <span>Biomedical insight</span>
+            <span>Literature discovery</span>
           </div>
         </div>
       </section>
@@ -94,7 +59,7 @@
             </div><div class="selection-summary" id="countrySummary">Worldwide · no country restriction</div><p class="evidence-note">Country is checked against the author’s affiliation. Unknown locations are excluded from country-specific searches.</p></div>
             <div class="filter-section"><div class="section-heading"><h3>Publication window</h3><button class="text-button" type="button" id="clearYears">Clear</button></div><div class="year-range"><label><span>From</span><input name="year_from" id="yearFrom" type="number" min="1800" max="2100" placeholder="Any year"></label><span class="range-dash">—</span><label><span>To</span><input name="year_to" id="yearTo" type="number" min="1800" max="2100" placeholder="Any year"></label></div><div class="year-presets"><button type="button" data-years="2">Last 2 years</button><button type="button" data-years="5">Last 5 years</button></div></div>
             <details class="filter-section"><summary><h3>Document type</h3><span class="detail-value" id="typeCount">All types</span></summary><div class="source-actions" style="margin-bottom:8px;"><button class="text-button" id="selectAllTypes" type="button">Select all</button><button class="text-button" id="clearTypes" type="button">Clear</button></div><div class="type-list">{% for type in ['Research Article', 'Case Reports', 'Brief Reports', 'Systematic Reports'] %}<label><input type="checkbox" name="article_types[]" value="{{ type }}">{{ type }}</label>{% endfor %}</div><p class="field-hint">Available classifications vary by repository.</p></details>
-            <details class="filter-section" id="sourceDetails" open><summary><h3>Repositories</h3><span class="detail-value" id="sourceCount">10 selected</span></summary><p class="field-hint">Search active sources from the upstream repository registry.</p><div class="master-select-row"><label><input type="checkbox" id="selectAllCheckbox"> <span>Select all 10 sources</span></label><button class="text-button" id="clearSources" type="button">Clear</button></div><div class="source-actions"><button class="text-button" id="selectSources" type="button">Select all (10)</button><button class="text-button" id="selectFastSources" type="button" style="color:var(--accent);font-weight:700;">⚡ Fast Mode (APIs)</button><button class="text-button source-filter-btn" type="button" data-cat="Biomedical">Biomedical (6)</button><button class="text-button source-filter-btn" type="button" data-cat="Preprints">Preprints (2)</button><button class="text-button source-filter-btn" type="button" data-cat="Global">Global (2)</button></div><div id="sourceList" class="source-list"></div></details>
+            <details class="filter-section" id="sourceDetails" open><summary><h3>Repositories</h3><span class="detail-value" id="sourceCount">10 selected</span></summary><p class="field-hint">Search active sources from the upstream repository registry.</p><div class="source-preset-row"><label for="sourcePreset">Repository selection</label><div><select id="sourcePreset" aria-label="Choose repository selection"><option value="all">Select all 10 sources</option><option value="fast">⚡ Fast Mode (APIs)</option><option value="Biomedical">Biomedical (6)</option><option value="Preprints">Preprints (2)</option><option value="Global">Global (2)</option><option value="custom" disabled>Custom selection</option></select><button class="text-button" id="clearSources" type="button">Clear</button></div></div><div id="sourceList" class="source-list"></div></details>
             <div class="run-section"><label for="maxPapers"><span class="field-label">Contact limit</span><small>Up to this many unique emails</small></label><input id="maxPapers" name="max_papers" type="number" value="25" min="1" max="1000" required></div>
             <button class="primary-button" id="submitBtn" type="submit"><span>Find author contacts</span><span aria-hidden="true">↗</span></button><p class="submit-note">Searches public literature and published contact details.</p>
           </form>
@@ -102,6 +67,10 @@
         <section class="results-panel" id="results" aria-labelledby="resultsHeading">
           <div class="results-header"><div><div class="eyebrow">YOUR COLLECTION</div><h2 id="resultsHeading">Search results <span id="resultCount">0</span></h2></div><div class="collection-actions"><a class="collection-export" id="downloadAllLink" href="/download/all" aria-label="Download full contact collection as Excel" title="Download full contact collection"><span class="collection-export-label">Export all</span><span class="collection-export-format">XLSX</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.75v9m0 0 3.25-3.25M10 11.75 6.75 8.5M3.75 13v3.25h12.5V13"/></svg></a><span class="status-tag" id="statusTag">Ready to search</span></div></div>
           <div class="search-context" id="searchContext" hidden></div>
+          <div class="message-box" id="messageBox" hidden role="alert"></div>
+          <div class="result-tools" id="resultTools" hidden><label class="result-search"><span aria-hidden="true">⌕</span><input id="resultSearch" type="search" placeholder="Filter your results" aria-label="Filter results"></label><button class="secondary-button" id="copyAll" type="button">Copy emails</button><a class="export-button" id="downloadLink" href="/download/current">Export search .xlsx <span aria-hidden="true">↓</span></a></div>
+          <div class="table-wrap" id="tableWrap" hidden><table><thead><tr><th class="number-col">#</th><th>Publication</th><th>Author</th><th>Email address</th></tr></thead><tbody id="tableBody"></tbody></table><p id="noMatches" hidden>No contacts match this filter.</p></div>
+          <div class="results-footer"><span class="footer-dot"></span><span>Published contact details · Unique email addresses</span><span id="visibleCount"></span></div>
           <div class="progress-box" id="progressBox" hidden role="status" aria-live="polite">
             <div class="progress-header-row">
               <strong id="statusText">Preparing your search…</strong>
@@ -116,14 +85,9 @@
               <small class="elapsed-counter" id="elapsedCounter">Elapsed: 0s</small>
             </div>
           </div>
-          <div class="message-box" id="messageBox" hidden role="alert"></div>
-          <div class="result-tools" id="resultTools" hidden><label class="result-search"><span aria-hidden="true">⌕</span><input id="resultSearch" type="search" placeholder="Filter your results" aria-label="Filter results"></label><button class="secondary-button" id="copyAll" type="button">Copy emails</button><a class="export-button" id="downloadLink" href="/download/current">Export search .xlsx <span aria-hidden="true">↓</span></a></div>
-          <div class="empty-state" id="emptyState"><div class="paper-stack" aria-hidden="true"><div class="paper back"></div><div class="paper front"><div class="paper-journal">OMICS · PULSUS / INTELLIGENCE</div><div class="paper-title-line"></div><div class="paper-title-line short"></div><div class="paper-rule"></div><div class="paper-lines"></div><div class="paper-author"><span>J</span><div><b></b><i></i></div><span class="paper-plus">+</span></div></div><span class="paper-badge">↗</span></div><h3>The next connection<br>is in the literature.</h3><p>Choose a topic and refine your search.<br>Author contacts will appear here, ready to explore.</p><div class="empty-steps"><span><b>1</b> Define a topic</span><span><b>2</b> Set your scope</span><span><b>3</b> Discover authors</span></div></div>
-          <div class="table-wrap" id="tableWrap" hidden><table><thead><tr><th class="number-col">#</th><th>Publication</th><th>Author</th><th>Email address</th></tr></thead><tbody id="tableBody"></tbody></table><p id="noMatches" hidden>No contacts match this filter.</p></div>
-          <div class="results-footer"><span class="footer-dot"></span><span>Published contact details · Unique email addresses</span><span id="visibleCount"></span></div>
         </section>
       </div>
-      <footer class="page-footer"><span>Pulsus Group · OMICS International</span><span>MedScout Intelligence <span class="footer-slash">/</span> Medical Researcher Network</span></footer>
+      <footer class="page-footer"><span>Pulsus Group</span><span>MedScout Intelligence <span class="footer-slash">/</span> Medical Researcher Network</span></footer>
     </main>
   </div><div id="toast" class="toast" role="status" hidden></div>
 </body>

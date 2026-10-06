@@ -25,6 +25,7 @@ from extractors.frontiers_fetcher import fetch_frontiers_papers
 from extractors.aha_fetcher import fetch_aha_papers
 
 from extractors.country_filter import COUNTRY_CODES, country_codes, eligible_authors, contact_allowed, resolve_email_author
+from extractors.ai_extractor_router import extract_with_openrouter
 
 app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -505,6 +506,36 @@ def extract_author_email_pairs(pdf_source, metadata_authors):
                 r'(?:\s*\(([A-Z]+)\))?',
                 text
             )
+            email_text = set()
+            for raw_email, _ in raw_matches:
+                clean_email = clean_and_validate_email(raw_email)
+                if clean_email:
+                    email_text.add(clean_email)
+            ai_names_by_email = {}
+            openrouter_key = os.getenv("OPENROUTER_API_KEY")
+            if openrouter_key and email_text:
+                known_authors = {
+                    name.casefold() for name in all_candidate_authors
+                }
+                for author_data in extract_with_openrouter(text, openrouter_key):
+                    if not isinstance(author_data, dict):
+                        continue
+                    author_name = author_data.get("name")
+                    raw_author_email = author_data.get("email")
+                    if (
+                        not isinstance(author_name, str)
+                        or not isinstance(raw_author_email, str)
+                    ):
+                        continue
+                    author_email = clean_and_validate_email(raw_author_email)
+                    if not author_email or author_email not in email_text:
+                        continue
+                    author_name = author_name.strip()
+                    if author_name and (
+                        author_name.casefold() in text.casefold()
+                        or author_name.casefold() in known_authors
+                    ):
+                        ai_names_by_email.setdefault(author_email, author_name)
 
             for raw_email, initials in raw_matches:
                 clean_email = clean_and_validate_email(raw_email)
@@ -513,9 +544,10 @@ def extract_author_email_pairs(pdf_source, metadata_authors):
 
                 username = clean_email.split('@')[0].lower()
                 clean_username = re.sub(r'[^a-z]', '', username)
-                matched_author = None
+                matched_author = ai_names_by_email.get(clean_email)
 
-                for author in all_candidate_authors:
+                candidate_authors = all_candidate_authors if not matched_author else ()
+                for author in candidate_authors:
                     # Strip non-alphabet characters from each part
                     raw_parts = [
                         re.sub(r'[^a-z]', '', p.lower())

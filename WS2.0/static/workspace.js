@@ -13,6 +13,13 @@ const sources = [
   { num: 9, id: 'frontiers', name: 'Frontiers', category: 'Biomedical', mode: 'Frontiers publications via Europe PMC', checked: true },
   { num: 10, id: 'aha', name: 'AHA Journals', category: 'Biomedical', mode: 'AHA publications via Europe PMC', checked: true }
 ];
+const sourcePresets = {
+  all: new Set(sources.map(source => source.id)),
+  fast: new Set(['plos', 'europepmc', 'elife', 'openalex', 'crossref', 'pubmed']),
+  Biomedical: new Set(sources.filter(source => source.category === 'Biomedical').map(source => source.id)),
+  Preprints: new Set(sources.filter(source => source.category === 'Preprints').map(source => source.id)),
+  Global: new Set(sources.filter(source => source.category === 'Global').map(source => source.id))
+};
 let records = [], running = false, toastTimer;
 for (const src of sources) {
   const label = document.createElement('label');
@@ -58,21 +65,17 @@ function updateSelection() {
   $('countrySummary').textContent = countries.length ? countries.join(' · ') : 'Worldwide · no country restriction';
   const selectedSources = checkedValues('source_sites');
   $('sourceCount').textContent = `${selectedSources.length} selected`;
-  if ($('selectAllCheckbox')) {
-    $('selectAllCheckbox').checked = (selectedSources.length === sources.length);
-    $('selectAllCheckbox').indeterminate = (selectedSources.length > 0 && selectedSources.length < sources.length);
+  if ($('sourcePreset')) {
+    const selectedIds = new Set(selectedSources);
+    const activePreset = Object.entries(sourcePresets).find(([, ids]) =>
+      ids.size === selectedIds.size && [...ids].every(id => selectedIds.has(id))
+    );
+    $('sourcePreset').value = activePreset ? activePreset[0] : 'custom';
   }
   const types = checkedValues('article_types').length;
   $('typeCount').textContent = types ? `${types} selected` : 'All types';
 }
 form.addEventListener('change', updateSelection);
-if ($('selectAllCheckbox')) {
-  $('selectAllCheckbox').addEventListener('change', e => {
-    const checked = e.target.checked;
-    for (const el of form.querySelectorAll('[name="source_sites[]"]')) el.checked = checked;
-    updateSelection();
-  });
-}
 $('countrySearch').addEventListener('input', e => {
   const query = e.target.value.toLocaleLowerCase();
   for (const label of document.querySelectorAll('.country-option')) label.hidden = !label.textContent.toLocaleLowerCase().includes(query);
@@ -99,27 +102,19 @@ if ($('clearTypes')) {
     updateSelection();
   });
 }
-for (const [id, checked] of [['selectSources', true], ['clearSources', false]]) {
-  $(id).addEventListener('click', () => {
-    for (const el of form.querySelectorAll('[name="source_sites[]"]')) el.checked = checked;
-    updateSelection();
-  });
-}
-if ($('selectFastSources')) {
-  $('selectFastSources').addEventListener('click', () => {
-    const fastSources = new Set(['plos', 'europepmc', 'elife', 'openalex', 'crossref', 'pubmed']);
-    for (const el of form.querySelectorAll('[name="source_sites[]"]')) {
-      el.checked = fastSources.has(el.value);
+if ($('sourcePreset')) {
+  $('sourcePreset').addEventListener('change', event => {
+    const selectedIds = sourcePresets[event.target.value] || new Set();
+    for (const input of form.querySelectorAll('[name="source_sites[]"]')) {
+      input.checked = selectedIds.has(input.value);
     }
     updateSelection();
   });
 }
-for (const btn of document.querySelectorAll('.source-filter-btn')) {
-  btn.addEventListener('click', () => {
-    const cat = btn.dataset.cat;
-    for (const card of document.querySelectorAll('.source-card')) {
-      const input = card.querySelector('input');
-      if (input) input.checked = (card.dataset.category === cat);
+if ($('clearSources')) {
+  $('clearSources').addEventListener('click', () => {
+    for (const input of form.querySelectorAll('[name="source_sites[]"]')) {
+      input.checked = false;
     }
     updateSelection();
   });
@@ -231,7 +226,6 @@ function showResults(result) {
   });
   $('resultCount').textContent = records.length; $('navCount').textContent = records.length;
   $('resultTools').hidden = !records.length; $('tableWrap').hidden = !records.length;
-  $('emptyState').hidden = !!records.length;
   $('downloadLink').hidden = !records.length;
   $('statusTag').textContent = records.length ? 'Search complete' : 'No contacts found'; $('statusTag').className = 'status-tag done';
   if (result.message) message(result.message);
@@ -249,7 +243,7 @@ form.addEventListener('submit', async event => {
     $('searchContext').hidden = false;
   }
   records = []; $('resultSearch').value = ''; $('resultCount').textContent = '0'; $('navCount').textContent = '0'; $('visibleCount').textContent = '';
-  $('resultTools').hidden = true; $('tableWrap').hidden = true; $('emptyState').hidden = true;
+  $('resultTools').hidden = true; $('tableWrap').hidden = true;
   $('progressBox').hidden = false; $('statusText').textContent = 'Preparing your search…'; $('percentage').textContent = '0%'; $('progressBar').style.width = '0%';
   if ($('etaTime')) $('etaTime').textContent = 'Est. ~15s';
   if ($('elapsedCounter')) $('elapsedCounter').textContent = 'Elapsed: 0s';
@@ -292,6 +286,6 @@ form.addEventListener('submit', async event => {
       }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-  } catch (error) { message(error.message); setBusy(false); $('progressBox').hidden = true; $('emptyState').hidden = false; $('statusTag').textContent = 'Search interrupted'; }
+  } catch (error) { message(error.message); setBusy(false); $('progressBox').hidden = true; $('statusTag').textContent = 'Search interrupted'; }
 });
 updateSelection();

@@ -1,15 +1,15 @@
-# 🔬 Pulsus MedScout // OMICS International & Pulsus Group
+# 🔬 Pulsus MedScout // Pulsus Group
 ## Biomedical Literature & Author Intelligence Platform
 
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/Framework-Flask%203.0-green.svg)](https://flask.palletsprojects.com/)
-[![UI Theme](https://img.shields.io/badge/Theme-Dark%20Maroon%20%26%20White-800020.svg)](https://tailwindcss.com/)
+[![UI Theme](https://img.shields.io/badge/Theme-White%2C%20Red%20%26%20Black-DC2626.svg)](https://tailwindcss.com/)
 [![Repositories](https://img.shields.io/badge/Sources-10%20Active%20Sources-crimson.svg)](#-active-web-app-sources)
 [![Author](https://img.shields.io/badge/Maintainer-Nitro--Builds--Yash-black.svg?logo=github)](https://github.com/Nitro-Builds-Yash)
-[![Affiliation](https://img.shields.io/badge/Affiliation-OMICS%20%26%20Pulsus-red.svg)](https://www.pulsus.com/)
+[![Publisher](https://img.shields.io/badge/Publisher-Pulsus%20Group-red.svg)](https://www.pulsus.com/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-**Pulsus MedScout** is a biomedical literature and author discovery platform for **OMICS International** and **Pulsus Group**. Its web app includes the 10 active sources in the upstream Email-Scraping registry, with strict institutional email validation and zero-tolerance Gmail filtering.
+**Pulsus MedScout** is a biomedical literature and author discovery platform from **Pulsus Group**. Its web app includes the 10 active sources in the upstream Email-Scraping registry, with strict institutional email validation and zero-tolerance Gmail filtering.
 
 ---
 
@@ -17,7 +17,7 @@
 
 * **🌐 10 active web-app sources:** Search PLOS, Europe PMC, eLife, OpenAlex, arXiv, bioRxiv/medRxiv, Crossref, PubMed, Frontiers, and AHA Journals.
 * **⚡ Concurrent independent searches:** Run up to five separate extraction jobs at once; each job still respects source request pacing and source priority.
-* **🎨 Dark Maroon & Crisp White Interface:** Refined dark obsidian-maroon aesthetic (`#0B0205`, `#15040B`), glowing ruby indicators, and high-contrast pure white typography.
+* **🎨 White, Red & Black Interface:** A clean white workspace with red accents, black typography, and blue action buttons.
 * **🛡️ Zero Gmail Policy & Quality Verification:** Excludes non-institutional domains (`@gmail.com`) to guarantee outreach deliverability to legitimate academic, university, and hospital departments.
 * **🔒 Strict 3-Field Completeness Guarantee:** Enforces an absolute 3-column data contract: **Paper Title**, **Author Name**, and **Email ID**. Any incomplete or missing field is filtered out automatically.
 * **📊 Direct Excel (.xlsx) & CSV Export:** Formatted Excel spreadsheets with auto-styled columns and instant clipboard copy.
@@ -26,7 +26,7 @@
   * **Geographic Scope & Country:** 36+ global countries with live search and "Select All" controls.
   * **Document Classification:** *Research Article*, *Case Reports*, *Brief Reports*, *Systematic Reports*.
   * **Publication Window:** Custom year range with quick-select presets (Last 2 or 5 Years).
-* **🤖 AI Extraction Router (Gemini & OpenRouter):** Intelligently extracts corresponding authors from unstructured full-text and XML layouts with heuristic fallback.
+* **🤖 AI Extraction Router (OpenRouter & Gemini):** Auto-discovers free OpenRouter text models, prefers models with larger context windows, and tries another free model when one is unavailable or rate-limited. Regex extraction remains as a fallback.
 * **📬 Mailbox Verification:** Verifies DNS MX records and simulates SMTP handshakes (`250 OK`) to confirm deliverability.
 
 ---
@@ -124,12 +124,13 @@ To enable LLM-based entity extraction, create a `.env` file in the root director
 # Google Gemini
 GEMINI_API_KEY=AIzaSy...
 
-# Or OpenRouter
+# OpenRouter (recommended; required for automatically selected free models)
 OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_MODEL=google/gemini-2.0-flash-001
+# Optional: set a specific free model ID. Leave blank for automatic selection.
+OPENROUTER_MODEL=
 ```
 
-If no API keys are provided, Pulsus MedScout runs fully autonomously using its built-in regex and layout heuristic engine.
+Create an OpenRouter API key at [openrouter.ai/keys](https://openrouter.ai/keys) and add it to `.env`. The router refreshes OpenRouter's public model catalog every six hours, selects models whose `:free` variants have zero prompt and completion pricing, and tries up to three free models in descending context-window order. It will not switch to a paid OpenRouter model. Free-model availability and rate limits are controlled by OpenRouter and can change. If no API keys are provided, Pulsus MedScout uses its built-in regex and layout heuristic engine.
 
 Downloaded PDFs are processed in memory and removed from the task's temporary source folders during and after extraction.
 

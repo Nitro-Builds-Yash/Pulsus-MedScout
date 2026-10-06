@@ -276,6 +276,37 @@ def test_selected_then_unselected_distinct_connectors_fill_exact_count(worker, m
     assert selected_fetch.call_count == expanded_fetch.call_count == 1
 
 
+def test_openrouter_pdf_match_is_used_only_for_text_emails(worker, monkeypatch):
+    class Page:
+        def extract_text(self, layout=True):
+            return "Jane Smith\nCorresponding author: jsmith@university.edu"
+
+    class Pdf:
+        pages = [Page()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(worker.pdfplumber, 'open', lambda _source: Pdf())
+    monkeypatch.setenv('OPENROUTER_API_KEY', 'test-key')
+    monkeypatch.setattr(
+        worker,
+        'extract_with_openrouter',
+        lambda _text, _key: [
+            {'name': 'Jane Smith', 'email': 'jsmith@university.edu'},
+            {'name': 'Fabricated Author', 'email': 'fabricated@university.edu'},
+        ],
+    )
+
+    results = worker.extract_author_email_pairs(b'%PDF-test', ['Jane Smith'])
+
+    assert ('Jane Smith', 'jsmith@university.edu') in results
+    assert not any(email == 'fabricated@university.edu' for _, email in results)
+
+
 def test_small_target_uses_small_batch_and_stops_at_target(worker, monkeypatch, tmp_path):
     papers = [pdf_paper(tmp_path, i) for i in range(10, 13)]
     selected_fetch = Mock(return_value=papers)
