@@ -1320,6 +1320,14 @@ details[open] .detail-value:after {
   background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(240,246,255,0.7) 100%);
 }
 
+.collection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .results-header .eyebrow {
   font-size: 8px;
   margin-bottom: 6px;

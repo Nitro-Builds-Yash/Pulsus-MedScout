@@ -100,7 +100,7 @@
           </form>
         </section>
         <section class="results-panel" id="results" aria-labelledby="resultsHeading">
-          <div class="results-header"><div><div class="eyebrow">YOUR COLLECTION</div><h2 id="resultsHeading">Search results <span id="resultCount">0</span></h2></div><span class="status-tag" id="statusTag">Ready to search</span></div>
+          <div class="results-header"><div><div class="eyebrow">YOUR COLLECTION</div><h2 id="resultsHeading">Search results <span id="resultCount">0</span></h2></div><div class="collection-actions"><a class="export-button" id="downloadAllLink" href="/download/all">Download full collection <span aria-hidden="true">↓</span></a><span class="status-tag" id="statusTag">Ready to search</span></div></div>
           <div class="search-context" id="searchContext" hidden></div>
           <div class="progress-box" id="progressBox" hidden role="status" aria-live="polite">
             <div class="progress-header-row">
@@ -117,7 +117,7 @@
             </div>
           </div>
           <div class="message-box" id="messageBox" hidden role="alert"></div>
-          <div class="result-tools" id="resultTools" hidden><label class="result-search"><span aria-hidden="true">⌕</span><input id="resultSearch" type="search" placeholder="Filter your results" aria-label="Filter results"></label><button class="secondary-button" id="copyAll" type="button">Copy emails</button><a class="export-button" id="downloadLink">Export .xlsx <span aria-hidden="true">↓</span></a></div>
+          <div class="result-tools" id="resultTools" hidden><label class="result-search"><span aria-hidden="true">⌕</span><input id="resultSearch" type="search" placeholder="Filter your results" aria-label="Filter results"></label><button class="secondary-button" id="copyAll" type="button">Copy emails</button><a class="export-button" id="downloadLink" href="/download/current">Export search .xlsx <span aria-hidden="true">↓</span></a></div>
           <div class="empty-state" id="emptyState"><div class="paper-stack" aria-hidden="true"><div class="paper back"></div><div class="paper front"><div class="paper-journal">OMICS · PULSUS / INTELLIGENCE</div><div class="paper-title-line"></div><div class="paper-title-line short"></div><div class="paper-rule"></div><div class="paper-lines"></div><div class="paper-author"><span>J</span><div><b></b><i></i></div><span class="paper-plus">+</span></div></div><span class="paper-badge">↗</span></div><h3>The next connection<br>is in the literature.</h3><p>Choose a topic and refine your search.<br>Author contacts will appear here, ready to explore.</p><div class="empty-steps"><span><b>1</b> Define a topic</span><span><b>2</b> Set your scope</span><span><b>3</b> Discover authors</span></div></div>
           <div class="table-wrap" id="tableWrap" hidden><table><thead><tr><th class="number-col">#</th><th>Publication</th><th>Author</th><th>Email address</th></tr></thead><tbody id="tableBody"></tbody></table><p id="noMatches" hidden>No contacts match this filter.</p></div>
           <div class="results-footer"><span class="footer-dot"></span><span>Published contact details · Unique email addresses</span><span id="visibleCount"></span></div>

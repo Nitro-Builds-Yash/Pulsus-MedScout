@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 import pdfplumber
 import pandas as pd
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 
 # Active source connectors from the upstream registry.
 from extractors.pubmed_fetcher import fetch_pubmed_papers
@@ -346,6 +346,18 @@ def save_new_emails_to_master(new_rows):
             header=file_is_empty,
             encoding="utf-8-sig",
         )
+
+
+def create_excel_workbook(rows):
+    """Create an Excel workbook in memory from contact rows."""
+    if not rows:
+        return None
+
+    df = pd.DataFrame(rows, columns=["Paper Title", "Author Name", "Email ID"])
+    workbook = io.BytesIO()
+    df.to_excel(workbook, index=False)
+    workbook.seek(0)
+    return workbook
 
 
 # -----------------------------------------------------------
@@ -1168,6 +1180,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None,
                 "message": message,
                 "data": [],
                 "file": None,
+                "download_file": None,
                 "requested_count": max_papers,
                 "total_records": 0,
                 "shortfall": max_papers,
@@ -1232,6 +1245,55 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None,
 @app.route("/")
 def index():
     return render_template("index.html", countries=COUNTRY_CODES)
+
+
+@app.route("/download/current", methods=["POST"])
+def download_current_results():
+    """Return the current search results as an in-memory Excel workbook."""
+    payload = request.get_json(silent=True)
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(rows, list) or not rows:
+        return jsonify({"error": "There are no search results to export."}), 400
+    if any(
+        not isinstance(row, dict)
+        or any(not isinstance(row.get(column), str) or not row[column].strip()
+               for column in ("Paper Title", "Author Name", "Email ID"))
+        for row in rows
+    ):
+        return jsonify({"error": "Search results must contain a title, author, and email for every row."}), 400
+
+    workbook = create_excel_workbook(rows)
+    return send_file(
+        workbook,
+        as_attachment=True,
+        download_name="medscout_search_results.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.route("/download/all")
+def download_all_contacts():
+    """Export the complete saved contact collection as an in-memory workbook."""
+    with _shared_data_lock():
+        if not os.path.isfile(MASTER_EMAIL_FILE) or os.path.getsize(MASTER_EMAIL_FILE) == 0:
+            return jsonify({"error": "There are no saved contacts to export yet."}), 404
+        contacts = pd.read_csv(MASTER_EMAIL_FILE, encoding="utf-8-sig")
+
+    columns = ["Paper Title", "Author Name", "Email ID"]
+    if not all(column in contacts.columns for column in columns):
+        log.error("[Export] Master contact CSV is missing required columns.")
+        return jsonify({"error": "The saved contact data has an invalid format."}), 500
+    rows = contacts[columns].fillna("").to_dict(orient="records")
+    if not rows:
+        return jsonify({"error": "There are no saved contacts to export yet."}), 404
+
+    workbook = create_excel_workbook(rows)
+    return send_file(
+        workbook,
+        as_attachment=True,
+        download_name="medscout_all_contacts.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @app.route("/start-extraction", methods=["POST"])

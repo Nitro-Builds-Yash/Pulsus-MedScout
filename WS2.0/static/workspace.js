@@ -131,11 +131,42 @@ for (const button of document.querySelectorAll('[data-years]')) button.addEventL
 $('clearYears').addEventListener('click', () => { $('yearFrom').value = ''; $('yearTo').value = ''; });
 function message(text) { $('messageBox').textContent = text; $('messageBox').hidden = !text; }
 function toast(text) { clearTimeout(toastTimer); $('toast').textContent = text; $('toast').hidden = false; toastTimer = setTimeout(() => $('toast').hidden = true, 3000); }
+async function downloadWorkbook(url, filename, options) {
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      let text = `Export failed (${response.status}). Try again.`;
+      try { const body = await response.json(); text = body.error || body.message || text; } catch {}
+      throw new Error(text);
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch (error) {
+    message(error.message);
+  }
+}
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast('Emails copied'); }
   catch { toast('Clipboard access unavailable. Select and copy the email text.'); }
 }
 $('copyAll').addEventListener('click', () => copy(filteredRecords().map(r => r['Email ID']).join('\n')));
+$('downloadAllLink').addEventListener('click', event => {
+  event.preventDefault();
+  downloadWorkbook('/download/all', 'medscout_all_contacts.xlsx');
+});
+$('downloadLink').addEventListener('click', event => {
+  event.preventDefault();
+  downloadWorkbook('/download/current', 'medscout_search_results.xlsx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({data: records})
+  });
+});
 function filteredRecords() {
   const query = $('resultSearch').value.trim().toLocaleLowerCase();
   return records.filter(r => Object.values(r).some(value => String(value).toLocaleLowerCase().includes(query)));
@@ -201,13 +232,7 @@ function showResults(result) {
   $('resultCount').textContent = records.length; $('navCount').textContent = records.length;
   $('resultTools').hidden = !records.length; $('tableWrap').hidden = !records.length;
   $('emptyState').hidden = !!records.length;
-  if (result.download_file) {
-    $('downloadLink').href = `/download/${encodeURIComponent(result.download_file)}`;
-    $('downloadLink').setAttribute('download', result.download_file);
-    $('downloadLink').hidden = false;
-  } else {
-    $('downloadLink').hidden = true;
-  }
+  $('downloadLink').hidden = !records.length;
   $('statusTag').textContent = records.length ? 'Search complete' : 'No contacts found'; $('statusTag').className = 'status-tag done';
   if (result.message) message(result.message);
   renderRows();
