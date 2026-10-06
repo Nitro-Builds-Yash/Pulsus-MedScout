@@ -141,18 +141,58 @@ small {
   align-items: center;
   gap: 11px;
   font-weight: 700;
-  font-size: 22px;
+  font-size: 24px;
   letter-spacing: -.6px;
   color: var(--ink);
 }
 
+.brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+
+.brand-primary {
+  color: var(--maroon);
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
 .brand small {
   display: block;
-  font-size: 8px;
-  letter-spacing: 2px;
+  font-size: 7px;
+  letter-spacing: 1.35px;
   color: var(--accent);
-  margin-top: 3px;
+  margin-top: 5px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.brand-lifeline {
+  width: 100%;
+  height: 15px;
+  margin-top: 6px;
+  overflow: visible;
+}
+
+.brand-lifeline path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 180;
+  filter: drop-shadow(0 0 3px rgba(225, 29, 72, 0.42));
+  animation: lifeline-flow 3s ease-in-out infinite;
+}
+
+@keyframes lifeline-flow {
+  0%, 100% { stroke-dashoffset: 0; opacity: 0.8; }
+  50% { stroke-dashoffset: -36; opacity: 1; }
 }
 
 .brand-mark {
@@ -1951,11 +1991,22 @@ td:first-child {
     margin: 0;
     font-size: 20px;
   }
-  .brand > span:last-child {
+  .brand > span.brand-copy {
     display: block;
+    line-height: 1;
   }
   .brand small {
-    display: none;
+    display: block;
+    font-size: 6px;
+    margin-top: 3px;
+  }
+  .brand-primary {
+    font-size: 18px;
+  }
+  .brand-lifeline {
+    display: block;
+    height: 10px;
+    margin-top: 3px;
   }
   .brand-mark {
     font-size: 28px;
@@ -1985,10 +2036,12 @@ td:first-child {
 }
 
 @media(prefers-reduced-motion: reduce) {
+  .brand-lifeline path,
   .medical-icon-card,
   .medical-icon-card:hover {
     transition: none;
     transform: none;
+    animation: none;
   }
   * {
     transition: none !important;
