@@ -1324,8 +1324,14 @@ details[open] .detail-value:after {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.collection-actions .status-tag {
+  padding-right: 8px;
+  padding-left: 8px;
+  font-size: 9px;
 }
 
 .results-header .eyebrow {
@@ -1751,6 +1757,54 @@ details[open] .detail-value:after {
 
 .export-button span {
   margin-left: 6px;
+}
+
+.collection-export {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid rgba(29, 78, 216, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #334155;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.05);
+  font-size: 9px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.collection-export:hover {
+  border-color: rgba(29, 78, 216, 0.38);
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.09);
+  transform: translateY(-1px);
+}
+
+.collection-export-label {
+  letter-spacing: .1px;
+}
+
+.collection-export-format {
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  font-size: 7px;
+  letter-spacing: .4px;
+}
+
+.collection-export svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #2563EB;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .table-wrap {
