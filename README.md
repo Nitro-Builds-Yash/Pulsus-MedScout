@@ -102,7 +102,7 @@ pip install -r requirements.txt
 ```bash
 python run.py
 ```
-Open your browser and navigate to: **`http://localhost:5000`**
+The app opens automatically in your default web browser at **`http://localhost:5000`**.
 
 ### 3. CLI Headless Usage
 

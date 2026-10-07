@@ -1,5 +1,7 @@
 import sys
 import os
+import threading
+import webbrowser
 from pathlib import Path
 
 # Add WS2.0 to path so extractors and app modules import cleanly
@@ -12,7 +14,9 @@ import config
 
 if __name__ == "__main__":
     display_host = "localhost" if config.HOST == "0.0.0.0" else config.HOST
-    print(f"[*] Starting Academic Author & Email Extractor on http://{display_host}:{config.PORT}")
-    print(f"    --> Open in browser: http://localhost:{config.PORT} or http://127.0.0.1:{config.PORT}")
+    browser_url = f"http://{display_host}:{config.PORT}"
+    print(f"[*] Starting Academic Author & Email Extractor on {browser_url}")
+    print(f"    --> Opening in your default browser")
+    if not config.DEBUG or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        threading.Timer(1.0, webbrowser.open_new_tab, args=(browser_url,)).start()
     app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
-
