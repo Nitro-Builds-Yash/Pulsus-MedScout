@@ -1,7 +1,6 @@
 import os
 import io
 import re
-import math
 import time
 import uuid
 import threading
@@ -754,7 +753,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None,
 
         # Start with a target-scaled batch to minimize first-result latency and
         # avoid unnecessary downloads when the requested count is small.
-        per_source_max = min(25, max(1, math.ceil(max_papers * 0.5)))
+        per_source_max = min(25, max(1, (max_papers + 1) // 2))
 
         def _pagination_step(source_key, requested_limit):
             """Return the result-window size used by offset-based connectors."""
@@ -1072,7 +1071,7 @@ def _run_extraction_task(task_id, source_sites, topic, max_papers, filters=None,
 
                     needed = max_papers - len(rows)
                     top_label, top_fetcher = SOURCE_FETCHERS[top_key]
-                    current_pct = min(94, 70 + int(24 * (len(rows) / max(1, max_papers))))
+                    current_pct = min(94, 70 + (24 * len(rows) // max(1, max_papers)))
                     task_update(
                         task_id, "running",
                         f"Harvesting {top_label} (page {round_idx + 2}) to reach target ({len(rows)}/{max_papers} found)...",
@@ -1349,8 +1348,9 @@ def start_extraction():
     try:
         max_papers = int(request.form.get("max_papers", 10))
     except (ValueError, TypeError):
-        max_papers = 10
-    max_papers = max(1, min(max_papers, 1000))
+        return jsonify({"error": "Enter a positive whole number for the contact target."}), 400
+    if max_papers < 1:
+        return jsonify({"error": "Enter a positive whole number for the contact target."}), 400
 
     if not topic:
         return jsonify({"error": "Please enter a valid research topic or keyword."}), 400

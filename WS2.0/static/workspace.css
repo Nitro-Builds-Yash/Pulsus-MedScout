@@ -2087,3 +2087,62 @@ body, h1, h2, h3, h4, h5, h6, label, p, span, strong, b, em, td, th {
   border-top: 1px solid var(--line);
   border-bottom: 0;
 }
+
+/* Improve readability throughout the search form without enlarging results text. */
+.search-panel .panel-heading h2 {
+  font-size: 21.5px;
+}
+
+.search-panel .quiet-tag {
+  font-size: 11.5px;
+}
+
+.search-panel .field-label {
+  font-size: 13px;
+}
+
+.search-panel .topic-wrap input,
+.search-panel .small-input,
+.search-panel .source-preset-row select,
+.search-panel .year-range input {
+  font-size: 14px;
+}
+
+.search-panel .topic-examples,
+.search-panel .text-button,
+.search-panel .field-hint,
+.search-panel .country-option,
+.search-panel .source-mode,
+.search-panel .run-section small {
+  font-size: 13px;
+}
+
+.search-panel .topic-examples button,
+.search-panel .year-presets button,
+.search-panel .type-list,
+.search-panel .source-list {
+  font-size: 12.5px;
+}
+
+.search-panel .filter-section h3 {
+  font-size: 17px;
+}
+
+.search-panel .selection-summary,
+.search-panel .detail-value,
+.search-panel .source-preset-row > label,
+.search-panel .source-name {
+  font-size: 13px;
+}
+
+.search-panel .evidence-note,
+.search-panel .year-range label > span,
+.search-panel .source-num,
+.search-panel .source-tag,
+.search-panel .submit-note {
+  font-size: 11.5px;
+}
+
+.search-panel .primary-button {
+  font-size: 15px;
+}

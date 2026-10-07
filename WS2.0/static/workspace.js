@@ -6,12 +6,12 @@ const sources = [
   { num: 2, id: 'europepmc', name: 'Europe PMC', category: 'Biomedical', mode: 'Full-text biomedical records + PDFs', checked: true },
   { num: 3, id: 'elife', name: 'eLife', category: 'Biomedical', mode: 'Life sciences and medicine search + PDF', checked: true },
   { num: 4, id: 'openalex', name: 'OpenAlex', category: 'Global', mode: 'Global open-access research index', checked: true },
-  { num: 5, id: 'arxiv', name: 'arXiv.org', category: 'Preprints', mode: 'Cornell University research archive', checked: true },
-  { num: 6, id: 'biorxiv', name: 'bioRxiv / medRxiv', category: 'Preprints', mode: 'CSHL biology and medicine research', checked: true },
+  { num: 5, id: 'arxiv', name: 'arXiv.org', category: 'Preprints', mode: 'Cornell University research archive', checked: false },
+  { num: 6, id: 'biorxiv', name: 'bioRxiv / medRxiv', category: 'Preprints', mode: 'CSHL biology and medicine research', checked: false },
   { num: 7, id: 'crossref', name: 'Crossref', category: 'Global', mode: 'Multi-publisher DOI network', checked: true },
   { num: 8, id: 'pubmed', name: 'PubMed / NCBI', category: 'Biomedical', mode: 'NCBI biomedical literature index', checked: true },
-  { num: 9, id: 'frontiers', name: 'Frontiers', category: 'Biomedical', mode: 'Frontiers publications via Europe PMC', checked: true },
-  { num: 10, id: 'aha', name: 'AHA Journals', category: 'Biomedical', mode: 'AHA publications via Europe PMC', checked: true }
+  { num: 9, id: 'frontiers', name: 'Frontiers', category: 'Biomedical', mode: 'Frontiers publications via Europe PMC', checked: false },
+  { num: 10, id: 'aha', name: 'AHA Journals', category: 'Biomedical', mode: 'AHA publications via Europe PMC', checked: false }
 ];
 const sourcePresets = {
   all: new Set(sources.map(source => source.id)),

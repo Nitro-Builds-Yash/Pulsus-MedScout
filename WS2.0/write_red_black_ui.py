@@ -460,8 +460,8 @@ body {
         </div>
 
         <div class="lg:col-span-2 space-y-1.5">
-          <label class="block text-xs font-bold uppercase tracking-wider text-rose-400">Target Limit</label>
-          <input type="number" id="max_papers" name="max_papers" min="1" max="1000" value="15"
+          <label class="block text-xs font-bold uppercase tracking-wider text-rose-400">Contact Target</label>
+          <input type="number" id="max_papers" name="max_papers" min="1" step="1" value="15"
                  class="dark-input font-mono font-bold text-center text-sm">
         </div>
 

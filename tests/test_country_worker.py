@@ -473,6 +473,9 @@ def test_short_page_advances_by_requested_window(worker, monkeypatch, tmp_path):
 @pytest.mark.parametrize('data', [
     {'topic': 'cancer', 'countries[]': 'Atlantis'},
     {'topic': 'cancer', 'year_from': '2026', 'year_to': '2020'},
+    {'topic': 'cancer', 'max_papers': '0'},
+    {'topic': 'cancer', 'max_papers': '-1'},
+    {'topic': 'cancer', 'max_papers': 'not-a-number'},
 ])
 def test_invalid_filters_rejected_before_start(data):
     response = application.app.test_client().post('/start-extraction', data=data)
@@ -506,6 +509,34 @@ def test_start_extraction_allows_five_concurrent_tasks(monkeypatch, tmp_path):
 
     for lease in leases:
         application._release_extraction_lock(lease)
+
+
+def test_start_extraction_has_no_contact_target_maximum(monkeypatch, tmp_path):
+    started = []
+
+    class DeferredThread:
+        def __init__(self, target, args, daemon):
+            self.args = args
+
+        def start(self):
+            started.append(self.args)
+
+    monkeypatch.setattr(application, 'LOCK_FILE_PREFIX', str(tmp_path / 'extraction_'))
+    monkeypatch.setattr(application, 'DATA_LOCK_FILE', str(tmp_path / 'data.lock'))
+    monkeypatch.setattr(
+        application,
+        'threading',
+        type('ThreadingStub', (), {'Thread': DeferredThread})(),
+    )
+    response = application.app.test_client().post(
+        '/start-extraction',
+        data={'topic': 'cancer', 'max_papers': '1500'},
+    )
+
+    assert response.status_code == 200
+    assert started[0][3] == 1500
+    application._release_extraction_lock(started[0][-1])
+    application.TASKS.pop(response.get_json()['task_id'], None)
 
 
 def test_concurrent_master_csv_appends_are_not_lost(monkeypatch, tmp_path):
