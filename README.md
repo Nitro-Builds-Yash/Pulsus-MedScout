@@ -147,7 +147,6 @@ Downloaded PDFs are processed in memory and removed from the task's temporary so
 | Contributor / System | Role & Focus |
 |:---|:---|
 | **Yash** ([@Nitro-Builds-Yash](https://github.com/Nitro-Builds-Yash)) | Project Lead, Architecture, Pipeline & UI Engineering |
-| **Balaji Noothi** ([@RANKER38](https://github.com/RANKER38)) | Research Contributor, Quality Verification & Testing |
 | **Claude** (Anthropic) | System Architecture, Code Refactoring & Logic Optimization |
 | **Emergent AI** | Extraction Heuristics, Pattern Discovery & AI Router Integration |
 
