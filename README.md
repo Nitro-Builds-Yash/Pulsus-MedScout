@@ -144,11 +144,12 @@ Downloaded PDFs are processed in memory and removed from the task's temporary so
 
 ## 👥 Contributions & Credits
 
-| Contributor / System | Role & Focus | Share |
-|:---|:---|:---:|
-| **Yash** ([@Nitro-Builds-Yash](https://github.com/Nitro-Builds-Yash)) | Project Lead, Architecture, Pipeline & UI Engineering | **80%** |
-| **Claude** (Anthropic) | System Architecture, Code Refactoring & Logic Optimization | **10%** |
-| **Emergent AI** | Extraction Heuristics, Pattern Discovery & AI Router Integration | **10%** |
+| Contributor / System | Role & Focus |
+|:---|:---|
+| **Yash** ([@Nitro-Builds-Yash](https://github.com/Nitro-Builds-Yash)) | Project Lead, Architecture, Pipeline & UI Engineering |
+| **Balaji Noothi** ([@RANKER38](https://github.com/RANKER38)) | Research Contributor, Quality Verification & Testing |
+| **Claude** (Anthropic) | System Architecture, Code Refactoring & Logic Optimization |
+| **Emergent AI** | Extraction Heuristics, Pattern Discovery & AI Router Integration |
 
 ---
 
